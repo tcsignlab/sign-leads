@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIGN LEADS USA — National Lead Intelligence Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --panel: #111318;
+    --border: #1e2330;
+    --accent: #e8291c;
+    --glow: rgba(232,41,28,0.4);
+    --text: #f0f4ff;
+    --muted: #6b7280;
+    --heat-0:   #1a1f2e;
+    --heat-1:   #2d3748;
+    --heat-50:  #1a3a6e;
+    --heat-200: #6d28d9;
+    --heat-500: #e8291c;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; overflow-x:hidden; }
+  body {
+    background: var(--bg);
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(0,40,104,0.18) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 100%, rgba(232,41,28,0.12) 0%, transparent 55%);
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,12,16,0.96);
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(16px);
+  }
+  .logo { display: flex; align-items: center; gap: 14px; }
+  .logo-icon {
+    width:44px; height:44px; background:var(--accent); border-radius:8px;
+    display:flex; align-items:center; justify-content:center; font-size:20px;
+    box-shadow:0 0 24px var(--glow);
+  }
+  .logo-text { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:2px; line-height:1; }
+  .logo-sub { font-size:0.7rem; color:var(--muted); letter-spacing:3px; text-transform:uppercase; }
+  .header-stats { display:flex; gap:32px; }
+  .hstat { text-align:center; }
+  .hstat-val { font-family:'Bebas Neue',sans-serif; font-size:2rem; line-height:1; color:var(--accent); }
+  .hstat-label { font-size:0.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:2px; }
+  .live-badge {
+    display:flex; align-items:center; gap:8px;
+    background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3);
+    padding:8px 16px; border-radius:24px; font-size:0.75rem;
+    color:#10b981; font-weight:700; letter-spacing:1px;
+  }
+  .live-dot { width:8px; height:8px; background:#10b981; border-radius:50%; animation:pulse-green 2s infinite; }
+  @keyframes pulse-green { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.6)} 50%{box-shadow:0 0 0 6px rgba(16,185,129,0)} }
+
+  /* ─── LAYOUT ─── */
+  .main { display:grid; grid-template-columns:240px 1fr 240px; min-height:calc(100vh - 73px); }
+  .side-panel { background:var(--panel); border-right:1px solid var(--border); padding:24px 16px; overflow-y:auto; }
+  .side-panel.right { border-right:none; border-left:1px solid var(--border); }
+  .panel-title {
+    font-family:'Bebas Neue',sans-serif; font-size:0.95rem; letter-spacing:3px;
+    color:var(--muted); margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border);
+  }
+
+  /* Legend */
+  .legend-item { display:flex; align-items:center; gap:12px; margin:10px 0; font-size:0.82rem; }
+  .legend-dot { width:14px; height:14px; border-radius:3px; flex-shrink:0; }
+  .legend-label { color:#c0c8d8; }
+  .legend-count { margin-left:auto; color:var(--muted); font-size:0.75rem; }
+
+  /* Top States */
+  .top-state-item {
+    display:flex; align-items:center; gap:10px; padding:8px 10px;
+    border-radius:8px; margin:4px 0; cursor:pointer; transition:background 0.2s; font-size:0.82rem;
+  }
+  .top-state-item:hover { background:rgba(255,255,255,0.05); }
+  .top-state-rank { font-family:'Bebas Neue',sans-serif; font-size:1rem; color:var(--muted); width:20px; }
+  .top-state-name { flex:1; font-weight:600; }
+  .top-state-leads {
+    background:rgba(232,41,28,0.15); color:var(--accent);
+    padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700;
+  }
+
+  /* Activity */
+  .activity-item { display:flex; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.78rem; }
+  .activity-dot { width:8px; height:8px; border-radius:50%; margin-top:4px; flex-shrink:0; }
+  .activity-text { color:#a0aec0; line-height:1.4; }
+  .activity-time { color:var(--muted); font-size:0.7rem; margin-top:2px; }
+
+  /* ─── MAP AREA ─── */
+  .map-area { padding:28px 32px; display:flex; flex-direction:column; align-items:center; }
+  .map-title-row { text-align:center; margin-bottom:20px; }
+  .map-title-row h2 { font-family:'Bebas Neue',sans-serif; font-size:2.4rem; letter-spacing:4px; line-height:1; }
+  .map-title-row p { color:var(--muted); font-size:0.8rem; letter-spacing:2px; text-transform:uppercase; margin-top:4px; }
+  #map-container { width:100%; max-width:880px; }
+
+  /* ─── D3 MAP STYLES ─── */
+  .state-path {
+    stroke: #0d1017;
+    stroke-width: 0.8px;
+    cursor: pointer;
+    transition: fill 0.3s ease, filter 0.2s ease;
+  }
+  .state-path:hover {
+    filter: brightness(1.6) drop-shadow(0 0 6px rgba(232,41,28,0.5));
+    stroke: rgba(255,255,255,0.5);
+    stroke-width: 1.5px;
+  }
+  .tier-0   { fill: var(--heat-0); }
+  .tier-1   { fill: var(--heat-1); }
+  .tier-50  { fill: var(--heat-50); }
+  .tier-200 { fill: var(--heat-200); }
+  .tier-500 { fill: var(--heat-500); }
+
+  .state-label {
+    font-family:'Inter',sans-serif; font-weight:700;
+    fill:rgba(255,255,255,0.6); pointer-events:none; font-size:7px;
+  }
+
+  /* ─── TOOLTIP ─── */
+  #tooltip {
+    position:fixed; background:rgba(10,12,16,0.97); border:1px solid var(--border);
+    border-radius:12px; padding:18px 22px; pointer-events:none; opacity:0;
+    transition:opacity 0.15s; z-index:1000; min-width:210px;
+    backdrop-filter:blur(20px);
+    box-shadow:0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05);
+  }
+  #tooltip.visible { opacity:1; }
+  .tt-state { font-family:'Bebas Neue',sans-serif; font-size:1.4rem; letter-spacing:2px; margin-bottom:8px; }
+  .tt-leads { font-size:2rem; font-weight:900; color:var(--accent); line-height:1; }
+  .tt-sub { font-size:0.75rem; color:var(--muted); margin-top:2px; }
+  .tt-hot-warm { font-size:0.78rem; color:#a0aec0; margin-top:6px; }
+  .tt-status { margin-top:10px; font-size:0.75rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+  .tt-status.active { color:#10b981; }
+  .tt-status.coming { color:var(--muted); }
+  .tt-click { font-size:0.7rem; color:#4a90e2; margin-top:6px; }
+
+  /* ─── MODAL ─── */
+  #modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(6px);
+    z-index:2000; display:none; align-items:center; justify-content:center;
+  }
+  #modal-overlay.visible { display:flex; }
+  .modal {
+    background:var(--panel); border:1px solid var(--border); border-radius:16px;
+    padding:40px; max-width:460px; width:90%; text-align:center; position:relative;
+    box-shadow:0 40px 100px rgba(0,0,0,0.8);
+  }
+  .modal-icon { font-size:3rem; margin-bottom:16px; }
+  .modal-title { font-family:'Bebas Neue',sans-serif; font-size:2rem; letter-spacing:3px; color:var(--accent); margin-bottom:8px; }
+  .modal-state { font-family:'Bebas Neue',sans-serif; font-size:1.2rem; letter-spacing:2px; color:var(--muted); margin-bottom:16px; }
+  .modal p { font-size:0.9rem; color:#a0aec0; line-height:1.7; margin-bottom:24px; }
+  .modal-btn {
+    background:linear-gradient(135deg,var(--accent),#a00820); color:white; border:none;
+    padding:14px 32px; border-radius:8px; font-weight:800; font-size:0.9rem; cursor:pointer;
+    letter-spacing:1px; text-transform:uppercase; transition:all 0.2s; margin:6px; display:inline-block;
+  }
+  .modal-btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px var(--glow); }
+  .modal-btn.secondary { background:transparent; border:1px solid var(--border); color:var(--muted); }
+  .modal-close { position:absolute; top:16px; right:16px; background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer; }
+  .modal-close:hover { color:var(--text); }
+
+  /* Sync bar */
+  .sync-bar {
+    width:100%; max-width:880px; display:flex; align-items:center; justify-content:space-between;
+    margin-top:12px; padding:8px 16px;
+    background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px;
+    font-size:0.75rem; color:var(--muted);
+  }
+  .sync-bar span { display:flex; align-items:center; gap:6px; }
+  .sync-spinner { width:10px; height:10px; border:1.5px solid var(--muted); border-top-color:#10b981; border-radius:50%; animation:spin 1.5s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* Loading state */
+  .loading-map {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:80px; color:var(--muted); gap:16px;
+  }
+  .loading-map .spin-big { width:48px; height:48px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; }
+
+  /* Quick stats */
+  .qstat-row {
+    display:flex; justify-content:space-between; border-bottom:1px solid var(--border);
+    padding:8px 0; font-size:0.82rem; color:#a0aec0; line-height:2;
+  }
+  .qstat-row:last-child { border-bottom:none; }
+
+  /* Next run countdown */
+  .next-run-box {
+    margin-top:20px; padding:12px; background:rgba(232,41,28,0.06);
+    border:1px solid rgba(232,41,28,0.2); border-radius:8px; text-align:center;
+  }
+  .next-run-label { font-size:0.65rem; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:4px; }
+  .next-run-val { font-family:'Bebas Neue',sans-serif; font-size:1.3rem; color:var(--accent); letter-spacing:1px; }
+
+  @media (max-width:900px) {
+    .main { grid-template-columns:1fr; }
+    .side-panel { display:none; }
+    header { padding:12px 16px; }
+    .header-stats { gap:16px; }
+    .hstat-val { font-size:1.4rem; }
+    .map-area { padding:16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🗺️</div>
+    <div>
+      <div class="logo-text">Sign Leads USA</div>
+      <div class="logo-sub">National Intelligence Map</div>
+    </div>
+  </div>
+  <div class="header-stats">
+    <div class="hstat"><div class="hstat-val" id="stat-total-leads">—</div><div class="hstat-label">Total Leads</div></div>
+    <div class="hstat"><div class="hstat-val" id="stat-active-states">—</div><div class="hstat-label">Active States</div></div>
+    <div class="hstat"><div class="hstat-val" id="stat-revenue">—</div><div class="hstat-label">Est. Revenue</div></div>
+  </div>
+  <div class="live-badge"><div class="live-dot"></div>LIVE DATA</div>
+</header>
+
+<div class="main">
+
+  <!-- LEFT PANEL -->
+  <div class="side-panel">
+    <div class="panel-title">HEAT MAP LEGEND</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#e8291c;box-shadow:0 0 8px rgba(232,41,28,0.5)"></div><div class="legend-label">500+ Leads</div><div class="legend-count" id="leg-500">0 states</div></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#6d28d9;box-shadow:0 0 8px rgba(109,40,217,0.5)"></div><div class="legend-label">200–499 Leads</div><div class="legend-count" id="leg-200">0 states</div></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1a3a6e"></div><div class="legend-label">50–199 Leads</div><div class="legend-count" id="leg-50">0 states</div></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#2d3748"></div><div class="legend-label">1–49 Leads</div><div class="legend-count" id="leg-1">0 states</div></div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1a1f2e;border:1px solid #2d3748"></div><div class="legend-label">Not Yet Scraped</div><div class="legend-count" id="leg-0">0 states</div></div>
+
+    <div class="panel-title" style="margin-top:28px">TOP STATES <span style="font-size:0.75rem;color:var(--accent);font-weight:900;margin-left:8px" id="top-states-total">0 total</span></div>
+    <div id="top-states-list"></div>
+  </div>
+
+  <!-- MAP CENTER -->
+  <div class="map-area">
+    <div class="map-title-row">
+      <h2>SELECT YOUR STATE</h2>
+      <p>Click any state to access its sign lead database</p>
+    </div>
+    <div id="map-container">
+      <div class="loading-map">
+        <div class="spin-big"></div>
+        <span>Loading US map…</span>
+      </div>
+      <svg id="usmap" viewBox="0 0 960 600" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;filter:drop-shadow(0 20px 60px rgba(0,0,0,0.6));display:none">
+        <g id="states-group"></g>
+        <g id="labels-group" pointer-events="none"></g>
+      </svg>
+    </div>
+    <div class="sync-bar">
+      <span><div class="sync-spinner"></div> <span id="sync-label">Loading scrape data…</span></span>
+      <span id="last-updated">Last updated: —</span>
+      <span id="sync-status" style="color:#10b981">✓ Live</span>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="side-panel right">
+    <div class="panel-title">RECENT ACTIVITY</div>
+    <div id="activity-feed"></div>
+
+    <div class="panel-title" style="margin-top:28px">QUICK STATS</div>
+    <div class="qstat-row"><span>States Online</span><span id="qs-online" style="color:#10b981;font-weight:700">—</span></div>
+    <div class="qstat-row"><span>Hot Leads 🔥</span><span id="qs-hot" style="color:var(--accent);font-weight:700">—</span></div>
+    <div class="qstat-row"><span>Warm Leads ⚡</span><span id="qs-warm" style="color:#f59e0b;font-weight:700">—</span></div>
+    <div class="qstat-row"><span>Scrape Cycle</span><span style="color:var(--muted);font-weight:700">96 hrs</span></div>
+
+    <div class="next-run-box">
+      <div class="next-run-label">Next Scrape Run</div>
+      <div class="next-run-val" id="next-run-val">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLTIP -->
+<div id="tooltip">
+  <div class="tt-state" id="tt-state">Texas</div>
+  <div class="tt-leads" id="tt-leads">0</div>
+  <div class="tt-sub">Sign Leads</div>
+  <div class="tt-hot-warm" id="tt-hot-warm"></div>
+  <div class="tt-status active" id="tt-status">● Active Database</div>
+  <div class="tt-click" id="tt-click">Click to access leads →</div>
+</div>
+
+<!-- MODAL — shown for states with no page yet -->
+<div id="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-icon">⏳</div>
+    <div class="modal-title">NOT YET SCRAPED</div>
+    <div class="modal-state" id="modal-state-name">— STATE —</div>
+    <p>This state's lead database hasn't been generated yet. The scraper runs every 96 hours and is working through all 50 states. Check back after the next run.</p>
+    <button class="modal-btn secondary" onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════
+// ALL 50 STATE PAGES — matches scraper output filenames
+// ═══════════════════════════════════════════════
+const STATE_PAGES = {
+  AL:'state-pages/alabama-sign-leads.html',
+  AK:'state-pages/alaska-sign-leads.html',
+  AZ:'state-pages/arizona-sign-leads.html',
+  AR:'state-pages/arkansas-sign-leads.html',
+  CA:'state-pages/california-sign-leads.html',
+  CO:'state-pages/colorado-sign-leads.html',
+  CT:'state-pages/connecticut-sign-leads.html',
+  DE:'state-pages/delaware-sign-leads.html',
+  FL:'state-pages/florida-sign-leads.html',
+  GA:'state-pages/georgia-sign-leads.html',
+  HI:'state-pages/hawaii-sign-leads.html',
+  ID:'state-pages/idaho-sign-leads.html',
+  IL:'state-pages/illinois-sign-leads.html',
+  IN:'state-pages/indiana-sign-leads.html',
+  IA:'state-pages/iowa-sign-leads.html',
+  KS:'state-pages/kansas-sign-leads.html',
+  KY:'state-pages/kentucky-sign-leads.html',
+  LA:'state-pages/louisiana-sign-leads.html',
+  ME:'state-pages/maine-sign-leads.html',
+  MD:'state-pages/maryland-sign-leads.html',
+  MA:'state-pages/massachusetts-sign-leads.html',
+  MI:'state-pages/michigan-sign-leads.html',
+  MN:'state-pages/minnesota-sign-leads.html',
+  MS:'state-pages/mississippi-sign-leads.html',
+  MO:'state-pages/missouri-sign-leads.html',
+  MT:'state-pages/montana-sign-leads.html',
+  NE:'state-pages/nebraska-sign-leads.html',
+  NV:'state-pages/nevada-sign-leads.html',
+  NH:'state-pages/new-hampshire-sign-leads.html',
+  NJ:'state-pages/new-jersey-sign-leads.html',
+  NM:'state-pages/new-mexico-sign-leads.html',
+  NY:'state-pages/new-york-sign-leads.html',
+  NC:'state-pages/north-carolina-sign-leads.html',
+  ND:'state-pages/north-dakota-sign-leads.html',
+  OH:'state-pages/ohio-sign-leads.html',
+  OK:'state-pages/oklahoma-sign-leads.html',
+  OR:'state-pages/oregon-sign-leads.html',
+  PA:'state-pages/pennsylvania-sign-leads.html',
+  RI:'state-pages/rhode-island-sign-leads.html',
+  SC:'state-pages/south-carolina-sign-leads.html',
+  SD:'state-pages/south-dakota-sign-leads.html',
+  TN:'state-pages/tennessee-sign-leads.html',
+  TX:'state-pages/texas-sign-leads.html',
+  UT:'state-pages/utah-sign-leads.html',
+  VT:'state-pages/vermont-sign-leads.html',
+  VA:'state-pages/virginia-sign-leads.html',
+  WA:'state-pages/washington-sign-leads.html',
+  WV:'state-pages/west-virginia-sign-leads.html',
+  WI:'state-pages/wisconsin-sign-leads.html',
+  WY:'state-pages/wyoming-sign-leads.html'
+};
+
+const STATE_NAMES = {
+  AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',
+  CO:'Colorado',CT:'Connecticut',DE:'Delaware',FL:'Florida',GA:'Georgia',
+  HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',
+  KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',
+  MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',
+  NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',
+  NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',
+  OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',
+  SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',
+  VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming'
+};
+
+const FIPS_TO_ABBR = {
+  "01":"AL","02":"AK","04":"AZ","05":"AR","06":"CA","08":"CO","09":"CT","10":"DE",
+  "12":"FL","13":"GA","15":"HI","16":"ID","17":"IL","18":"IN","19":"IA","20":"KS",
+  "21":"KY","22":"LA","23":"ME","24":"MD","25":"MA","26":"MI","27":"MN","28":"MS",
+  "29":"MO","30":"MT","31":"NE","32":"NV","33":"NH","34":"NJ","35":"NM","36":"NY",
+  "37":"NC","38":"ND","39":"OH","40":"OK","41":"OR","42":"PA","44":"RI","45":"SC",
+  "46":"SD","47":"TN","48":"TX","49":"UT","50":"VT","51":"VA","53":"WA","54":"WV",
+  "55":"WI","56":"WY"
+};
+
+// Live state data — populated from scrape-summary.json
+let stateData = {};
+let availablePages = new Set(); // states whose HTML pages actually exist
+let mapBuilt = false;
+let lastScrapeTime = null;
+let nextRunTime = null;
+
+// ═══════════════════════════════════════════════
+// LOAD LIVE DATA FROM SCRAPE-SUMMARY.JSON
+// Falls back gracefully if file doesn't exist yet
+// ═══════════════════════════════════════════════
+async function loadScrapeData() {
+  try {
+    const res = await fetch('state-pages/scrape-summary.json?t=' + Date.now());
+    if (!res.ok) throw new Error('No summary file');
+    const summary = await res.json();
+
+    // Populate stateData from breakdown
+    stateData = {};
+    if (summary.stateBreakdown) {
+      summary.stateBreakdown.forEach(entry => {
+        if (entry.leadCount > 0) {
+          stateData[entry.stateCode] = {
+            leads: entry.leadCount,
+            hot: entry.hotLeads || 0,
+            warm: entry.warmLeads || 0
+          };
+        }
+      });
+    }
+
+    lastScrapeTime = summary.timestamp ? new Date(summary.timestamp) : null;
+    nextRunTime    = summary.nextRun   ? new Date(summary.nextRun)   : null;
+
+    // Update sync bar
+    if (lastScrapeTime) {
+      document.getElementById('last-updated').textContent = 'Scraped: ' + lastScrapeTime.toLocaleString();
+    }
+    document.getElementById('sync-label').textContent = 'Data loaded from scrape-summary.json';
+    document.getElementById('sync-status').textContent = '✓ Live';
+
+    // Check which state pages actually exist (HEAD requests)
+    await checkAvailablePages();
+
+    if (mapBuilt) applyHeatMap();
+    updateStats(summary);
+    updateSidePanels(summary);
+
+  } catch (err) {
+    // No summary yet — show empty map, waiting for first scrape
+    document.getElementById('sync-label').textContent = 'Awaiting first scrape run…';
+    document.getElementById('sync-status').textContent = '⏳ Pending';
+    document.getElementById('last-updated').textContent = 'No data yet';
+    if (mapBuilt) applyHeatMap();
+    updateStats(null);
+    updateSidePanels(null);
+  }
+}
+
+// Check which state HTML pages actually exist (so clicks go to real pages)
+async function checkAvailablePages() {
+  availablePages.clear();
+  const checks = Object.entries(STATE_PAGES).map(async ([abbr, url]) => {
+    try {
+      const r = await fetch(url, { method: 'HEAD' });
+      if (r.ok) availablePages.add(abbr);
+    } catch (e) { /* page doesn't exist */ }
+  });
+  await Promise.allSettled(checks);
+}
+
+// ═══════════════════════════════════════════════
+// HEAT TIER
+// ═══════════════════════════════════════════════
+function getTier(leads) {
+  if (leads >= 500) return '500';
+  if (leads >= 200) return '200';
+  if (leads >= 50)  return '50';
+  if (leads >= 1)   return '1';
+  return '0';
+}
+
+// ═══════════════════════════════════════════════
+// BUILD MAP
+// ═══════════════════════════════════════════════
+async function buildMap() {
+  const us = await d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json');
+
+  const width = 960, height = 600;
+  const projection = d3.geoAlbersUsa().scale(1300).translate([width/2, height/2]);
+  const path = d3.geoPath().projection(projection);
+
+  const states  = topojson.feature(us, us.objects.states);
+  const borders = topojson.mesh(us, us.objects.states, (a,b) => a !== b);
+
+  const g      = d3.select('#states-group');
+  const labels = d3.select('#labels-group');
+
+  g.selectAll('path.state-path')
+    .data(states.features)
+    .enter()
+    .append('path')
+    .attr('class', 'state-path tier-0')
+    .attr('d', path)
+    .attr('data-fips', d => d.id)
+    .attr('data-state', d => FIPS_TO_ABBR[String(d.id).padStart(2,'0')] || '')
+    .on('mouseenter', function(event, d) {
+      const abbr = FIPS_TO_ABBR[String(d.id).padStart(2,'0')] || '';
+      const info = stateData[abbr] || { leads:0, hot:0, warm:0 };
+      const hasPage = availablePages.has(abbr);
+
+      document.getElementById('tt-state').textContent = (STATE_NAMES[abbr] || abbr).toUpperCase();
+      document.getElementById('tt-leads').textContent = info.leads > 0 ? info.leads.toLocaleString() : '0';
+
+      const hotWarm = document.getElementById('tt-hot-warm');
+      if (info.leads > 0) {
+        hotWarm.textContent = `🔥 ${info.hot || 0} hot  ⚡ ${info.warm || 0} warm`;
+      } else {
+        hotWarm.textContent = '';
+      }
+
+      const statusEl = document.getElementById('tt-status');
+      const clickEl  = document.getElementById('tt-click');
+      if (hasPage && info.leads > 0) {
+        statusEl.textContent = '● Active Database';
+        statusEl.className   = 'tt-status active';
+        clickEl.textContent  = 'Click to access leads →';
+      } else if (hasPage) {
+        statusEl.textContent = '● Page Online';
+        statusEl.className   = 'tt-status active';
+        clickEl.textContent  = 'Click to open →';
+      } else {
+        statusEl.textContent = '◌ Not Yet Scraped';
+        statusEl.className   = 'tt-status coming';
+        clickEl.textContent  = 'Check back after next run';
+      }
+
+      document.getElementById('tooltip').classList.add('visible');
+      moveTooltip(event);
+    })
+    .on('mousemove', function(event) { moveTooltip(event); })
+    .on('mouseleave', function() { document.getElementById('tooltip').classList.remove('visible'); })
+    .on('click', function(event, d) {
+      const abbr = FIPS_TO_ABBR[String(d.id).padStart(2,'0')] || '';
+      handleStateClick(abbr);
+    });
+
+  g.append('path')
+    .datum(borders)
+    .attr('fill', 'none')
+    .attr('stroke', '#0d1017')
+    .attr('stroke-width', 0.5)
+    .attr('d', path)
+    .attr('pointer-events', 'none');
+
+  const tiny = ['CT','DE','RI','NJ','NH','VT','MA','MD','DC'];
+  labels.selectAll('text')
+    .data(states.features)
+    .enter()
+    .append('text')
+    .attr('class', 'state-label')
+    .attr('text-anchor', 'middle')
+    .attr('dominant-baseline', 'middle')
+    .attr('transform', d => { const c = path.centroid(d); return `translate(${c[0]},${c[1]})`; })
+    .attr('font-size', d => {
+      const abbr = FIPS_TO_ABBR[String(d.id).padStart(2,'0')] || '';
+      return tiny.includes(abbr) ? '5' : '8';
+    })
+    .text(d => FIPS_TO_ABBR[String(d.id).padStart(2,'0')] || '');
+
+  // Hide loader, show SVG
+  document.querySelector('.loading-map').style.display = 'none';
+  document.getElementById('usmap').style.display = 'block';
+
+  mapBuilt = true;
+  applyHeatMap();
+}
+
+// ═══════════════════════════════════════════════
+// APPLY HEAT COLORS
+// ═══════════════════════════════════════════════
+function applyHeatMap() {
+  if (!mapBuilt) return;
+  d3.selectAll('.state-path').each(function() {
+    const abbr  = this.getAttribute('data-state');
+    const leads = (stateData[abbr] || {}).leads || 0;
+    this.className.baseVal = `state-path tier-${getTier(leads)}`;
+  });
+}
+
+// ═══════════════════════════════════════════════
+// STATS + PANELS
+// ═══════════════════════════════════════════════
+function updateStats(summary) {
+  let totalLeads = 0, activeStates = 0, totalHot = 0, totalWarm = 0;
+
+  Object.values(stateData).forEach(d => {
+    if (d.leads > 0) { totalLeads += d.leads; activeStates++; }
+    totalHot  += d.hot  || 0;
+    totalWarm += d.warm || 0;
+  });
+
+  document.getElementById('stat-total-leads').textContent    = totalLeads > 0 ? totalLeads.toLocaleString() : '—';
+  document.getElementById('stat-active-states').textContent  = activeStates || '—';
+  document.getElementById('stat-revenue').textContent        = activeStates > 0 ? '$' + (totalLeads * 0.025).toFixed(1) + 'M+' : '—';
+  document.getElementById('qs-online').textContent           = activeStates || '—';
+  document.getElementById('qs-hot').textContent              = totalHot  || '—';
+  document.getElementById('qs-warm').textContent             = totalWarm || '—';
+
+  // Next run countdown
+  if (nextRunTime) {
+    const diff = nextRunTime - Date.now();
+    if (diff > 0) {
+      const hrs = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      document.getElementById('next-run-val').textContent = `${hrs}h ${mins}m`;
+    } else {
+      document.getElementById('next-run-val').textContent = 'Running now…';
+    }
+  }
+}
+
+function updateSidePanels(summary) {
+  const allAbbrs = Object.values(FIPS_TO_ABBR);
+  const counts = {'0':0,'1':0,'50':0,'200':0,'500':0};
+  allAbbrs.forEach(abbr => {
+    counts[getTier((stateData[abbr] || {}).leads || 0)]++;
+  });
+
+  document.getElementById('leg-500').textContent = counts['500'] + ' states';
+  document.getElementById('leg-200').textContent = counts['200'] + ' states';
+  document.getElementById('leg-50').textContent  = counts['50']  + ' states';
+  document.getElementById('leg-1').textContent   = counts['1']   + ' states';
+  document.getElementById('leg-0').textContent   = counts['0']   + ' states';
+
+  // Top states list
+  const sorted = Object.entries(stateData)
+    .filter(([,d]) => d.leads > 0)
+    .sort((a,b) => b[1].leads - a[1].leads)
+    .slice(0, 10);
+  const topTotal = sorted.reduce((sum,[,d]) => sum + d.leads, 0);
+  document.getElementById('top-states-total').textContent = topTotal.toLocaleString() + ' total';
+  document.getElementById('top-states-list').innerHTML = sorted.map(([abbr,d], i) => `
+    <div class="top-state-item" onclick="handleStateClick('${abbr}')">
+      <div class="top-state-rank">${i+1}</div>
+      <div class="top-state-name">${STATE_NAMES[abbr] || abbr}</div>
+      <div class="top-state-leads">${d.leads}</div>
+    </div>`).join('');
+
+  // Activity feed
+  const recentStates = sorted.slice(0,5).map(([abbr,d]) => ({
+    color:'#10b981',
+    text:`${STATE_NAMES[abbr]} — ${d.leads} leads (🔥${d.hot||0} ⚡${d.warm||0})`,
+    time: lastScrapeTime ? timeAgo(lastScrapeTime) : 'recent'
+  }));
+
+  const staticItems = [
+    { color:'#4a90e2', text:'Scraper cycle: every 96 hours', time:'schedule' },
+    { color:'#f59e0b', text:'AI scoring: disabled (free mode)', time:'config' },
+    { color:'#6b7280', text:'Data from Google Custom Search', time:'source' },
+  ];
+
+  const items = [...recentStates, ...staticItems].slice(0, 8);
+  document.getElementById('activity-feed').innerHTML = items.map(a => `
+    <div class="activity-item">
+      <div class="activity-dot" style="background:${a.color}"></div>
+      <div><div class="activity-text">${a.text}</div><div class="activity-time">${a.time}</div></div>
+    </div>`).join('');
+}
+
+function timeAgo(date) {
+  const seconds = Math.floor((Date.now() - date) / 1000);
+  if (seconds < 60)  return 'just now';
+  if (seconds < 3600)  return Math.floor(seconds/60) + 'm ago';
+  if (seconds < 86400) return Math.floor(seconds/3600) + 'h ago';
+  return Math.floor(seconds/86400) + 'd ago';
+}
+
+// ═══════════════════════════════════════════════
+// TOOLTIP
+// ═══════════════════════════════════════════════
+function moveTooltip(event) {
+  const tip = document.getElementById('tooltip');
+  tip.style.left = event.clientX + 'px';
+  tip.style.top  = event.clientY + 'px';
+  tip.style.transform = 'translate(-50%, calc(-100% - 16px))';
+}
+
+// ═══════════════════════════════════════════════
+// CLICK HANDLER
+// ═══════════════════════════════════════════════
+function handleStateClick(abbr) {
+  if (!abbr) return;
+  if (availablePages.has(abbr)) {
+    window.location.href = STATE_PAGES[abbr];
+  } else {
+    document.getElementById('modal-state-name').textContent = '— ' + (STATE_NAMES[abbr] || abbr).toUpperCase() + ' —';
+    document.getElementById('modal-overlay').classList.add('visible');
+  }
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('visible'); }
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+// ═══════════════════════════════════════════════
+// COUNTDOWN TICK
+// ═══════════════════════════════════════════════
+setInterval(() => {
+  if (nextRunTime) {
+    const diff = nextRunTime - Date.now();
+    if (diff > 0) {
+      const hrs  = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      document.getElementById('next-run-val').textContent = `${hrs}h ${mins}m`;
+    } else {
+      document.getElementById('next-run-val').textContent = 'Running now…';
+    }
+  }
+}, 30000);
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+async function init() {
+  // Load map and data in parallel
+  await Promise.allSettled([
+    buildMap().catch(err => {
+      document.getElementById('map-container').innerHTML = `
+        <div style="text-align:center;padding:60px;color:var(--muted);">
+          <div style="font-size:2rem;margin-bottom:16px;">🗺️</div>
+          <p>Map requires an internet connection to load geographic data.</p>
+          <p style="margin-top:8px;font-size:0.8rem;">Open this page in a browser with internet access.</p>
+        </div>`;
+    }),
+    loadScrapeData()
+  ]);
+}
+
+init();
+</script>
+</body>
+</html>
