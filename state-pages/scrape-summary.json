@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-02-13T22:15:39.851Z",
+  "timestamp": "2026-02-13T23:18:18.403Z",
   "totalLeads": 0,
   "statesProcessed": 1,
-  "durationSeconds": "3.15",
-  "nextRun": "2026-02-17T22:15:39.851Z",
+  "durationSeconds": "3.12",
+  "nextRun": "2026-02-17T23:18:18.403Z",
   "apiKeyStats": {
     "totalCalls": 10,
     "exhaustedKeys": 10,
@@ -20,132 +20,132 @@
   ],
   "logs": [
     {
-      "timestamp": "2026-02-13T22:15:36.695Z",
+      "timestamp": "2026-02-13T23:18:15.281Z",
       "level": "info",
       "message": "\n🚀 STARTING 50-STATE SIGN LEAD SCRAPE"
     },
     {
-      "timestamp": "2026-02-13T22:15:36.698Z",
+      "timestamp": "2026-02-13T23:18:15.285Z",
       "level": "info",
-      "message": "Time: 2026-02-13T22:15:36.698Z"
+      "message": "Time: 2026-02-13T23:18:15.285Z"
     },
     {
-      "timestamp": "2026-02-13T22:15:36.698Z",
+      "timestamp": "2026-02-13T23:18:15.285Z",
       "level": "info",
       "message": "API Keys loaded: 10"
     },
     {
-      "timestamp": "2026-02-13T22:15:36.698Z",
+      "timestamp": "2026-02-13T23:18:15.285Z",
       "level": "info",
       "message": "Search Engine IDs loaded: 10"
     },
     {
-      "timestamp": "2026-02-13T22:15:36.700Z",
+      "timestamp": "2026-02-13T23:18:15.286Z",
       "level": "info",
       "message": "\n========== SCRAPING ALABAMA =========="
     },
     {
-      "timestamp": "2026-02-13T22:15:36.700Z",
+      "timestamp": "2026-02-13T23:18:15.287Z",
       "level": "info",
       "message": "Phase 1: Keyword searches"
     },
     {
-      "timestamp": "2026-02-13T22:15:36.836Z",
+      "timestamp": "2026-02-13T23:18:15.418Z",
       "level": "warning",
       "message": "Key AIzaSyBfM3gX... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T22:15:36.897Z",
+      "timestamp": "2026-02-13T23:18:15.459Z",
       "level": "warning",
       "message": "Key AIzaSyDccPPC... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T22:15:36.943Z",
+      "timestamp": "2026-02-13T23:18:15.502Z",
       "level": "warning",
       "message": "Key AIzaSyBqf18P... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T22:15:37.002Z",
+      "timestamp": "2026-02-13T23:18:15.564Z",
       "level": "warning",
       "message": "Key AIzaSyCBjnFQ... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T22:15:37.042Z",
+      "timestamp": "2026-02-13T23:18:15.611Z",
       "level": "warning",
       "message": "Key AIzaSyCwIy17... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T22:15:37.086Z",
+      "timestamp": "2026-02-13T23:18:15.659Z",
       "level": "warning",
       "message": "Key AIzaSyBnkBL4... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T22:15:37.130Z",
+      "timestamp": "2026-02-13T23:18:15.707Z",
       "level": "warning",
       "message": "Key AIzaSyCtrdBD... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T22:15:37.223Z",
+      "timestamp": "2026-02-13T23:18:15.802Z",
       "level": "warning",
       "message": "Key AIzaSyDcWPtB... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T22:15:37.283Z",
+      "timestamp": "2026-02-13T23:18:15.863Z",
       "level": "warning",
       "message": "Key AIzaSyACHVBA... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T22:15:37.346Z",
+      "timestamp": "2026-02-13T23:18:15.898Z",
       "level": "warning",
       "message": "Key AIzaSyBLK-Y8... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T22:15:37.346Z",
+      "timestamp": "2026-02-13T23:18:15.899Z",
       "level": "error",
       "message": "ALL API KEYS EXHAUSTED for today"
     },
     {
-      "timestamp": "2026-02-13T22:15:37.848Z",
+      "timestamp": "2026-02-13T23:18:16.400Z",
       "level": "info",
       "message": "0 unique results for Alabama"
     },
     {
-      "timestamp": "2026-02-13T22:15:37.848Z",
+      "timestamp": "2026-02-13T23:18:16.400Z",
       "level": "success",
       "message": "0 leads extracted for Alabama"
     },
     {
-      "timestamp": "2026-02-13T22:15:37.848Z",
+      "timestamp": "2026-02-13T23:18:16.400Z",
       "level": "warning",
       "message": "Alabama: 0 leads - below minimum, no page generated"
     },
     {
-      "timestamp": "2026-02-13T22:15:39.851Z",
+      "timestamp": "2026-02-13T23:18:18.403Z",
       "level": "warning",
       "message": "All API keys exhausted - stopping early"
     },
     {
-      "timestamp": "2026-02-13T22:15:39.851Z",
+      "timestamp": "2026-02-13T23:18:18.403Z",
       "level": "success",
       "message": "\n✅ SCRAPE COMPLETE"
     },
     {
-      "timestamp": "2026-02-13T22:15:39.851Z",
+      "timestamp": "2026-02-13T23:18:18.403Z",
       "level": "info",
       "message": "Total leads: 0"
     },
     {
-      "timestamp": "2026-02-13T22:15:39.851Z",
+      "timestamp": "2026-02-13T23:18:18.403Z",
       "level": "info",
       "message": "States with pages: 0"
     },
     {
-      "timestamp": "2026-02-13T22:15:39.851Z",
+      "timestamp": "2026-02-13T23:18:18.403Z",
       "level": "info",
-      "message": "Duration: 3.15s"
+      "message": "Duration: 3.12s"
     },
     {
-      "timestamp": "2026-02-13T22:15:39.851Z",
+      "timestamp": "2026-02-13T23:18:18.403Z",
       "level": "info",
       "message": "API calls: 10 | Keys exhausted: 10/10"
     }
