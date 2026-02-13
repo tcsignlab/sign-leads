@@ -1,1 +1,76 @@
+name: FREE Sign Lead Scraper
 
+on:
+  schedule:
+    - cron: '0 0 */4 * *'
+  workflow_dispatch:
+
+jobs:
+  scrape-leads:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Run FREE lead scraper (Google only)
+        env:
+          GOOGLE_API_KEYS: ${{ secrets.GOOGLE_API_KEYS }}
+          GOOGLE_SEARCH_ENGINE_IDS: ${{ secrets.GOOGLE_SEARCH_ENGINE_IDS }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_SEARCH_ENGINE_ID: ${{ secrets.GOOGLE_SEARCH_ENGINE_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          OUTPUT_DIR: ./state-pages
+        run: node scraper-backend.js
+      
+      - name: Check for changes
+        id: git-check
+        run: |
+          git diff --exit-code state-pages/ || echo "changes=true" >> $GITHUB_OUTPUT
+      
+      - name: Commit and push updated state pages
+        if: steps.git-check.outputs.changes == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
+          git add state-pages/
+          git add next-run.json
+          git commit -m "Auto-update: Sign leads scraped on $(date +'%Y-%m-%d %H:%M UTC')"
+          git push
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scrape-results-${{ github.run_number }}
+          path: |
+            state-pages/scrape-summary.json
+            state-pages/raw-data/
+          retention-days: 90
+      
+      - name: Post success summary
+        if: success()
+        run: |
+          if [ -f state-pages/scrape-summary.json ]; then
+            echo "✅ FREE lead scraping completed!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📈 Results" >> $GITHUB_STEP_SUMMARY
+            echo "- **Total Leads:** $(jq -r '.totalLeads' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
+            echo "- **States Processed:** $(jq -r '.statesProcessed' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Duration:** $(jq -r '.durationSeconds' state-pages/scrape-summary.json)s" >> $GITHUB_STEP_SUMMARY
+            echo "- **Next Run:** $(jq -r '.nextRun' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Monthly Cost:** $0.00 (100% Free)" >> $GITHUB_STEP_SUMMARY
+          fi
