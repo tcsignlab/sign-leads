@@ -1,0 +1,29 @@
+{
+  "name": "autonomous-sign-lead-scraper",
+  "version": "1.0.0",
+  "description": "Automated sign industry lead scraping and state page generation",
+  "main": "scraper-backend.js",
+  "scripts": {
+    "start": "node scraper-backend.js",
+    "test": "node test-scraper.js",
+    "deploy:lambda": "serverless deploy",
+    "deploy:gcp": "gcloud functions deploy sign-lead-scraper --runtime nodejs18 --trigger-topic daily-scrape --entry-point handler"
+  },
+  "keywords": [
+    "scraper",
+    "lead-generation",
+    "automation",
+    "sign-industry"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "serverless": "^3.38.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
