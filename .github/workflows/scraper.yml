@@ -13,8 +13,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -24,7 +22,22 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Run FREE lead scraper (Google only)
+      - name: Debug - Check secrets
+        run: |
+          echo "Checking if API keys are configured..."
+          if [ -z "${{ secrets.GOOGLE_API_KEYS }}" ] && [ -z "${{ secrets.GOOGLE_API_KEY }}" ]; then
+            echo "❌ ERROR: No Google API keys found in secrets!"
+            echo "Please add GOOGLE_API_KEYS or GOOGLE_API_KEY to repository secrets"
+            exit 1
+          fi
+          if [ -z "${{ secrets.GOOGLE_SEARCH_ENGINE_IDS }}" ] && [ -z "${{ secrets.GOOGLE_SEARCH_ENGINE_ID }}" ]; then
+            echo "❌ ERROR: No Google Search Engine IDs found in secrets!"
+            echo "Please add GOOGLE_SEARCH_ENGINE_IDS or GOOGLE_SEARCH_ENGINE_ID to repository secrets"
+            exit 1
+          fi
+          echo "✅ API keys configured"
+      
+      - name: Run FREE lead scraper
         env:
           GOOGLE_API_KEYS: ${{ secrets.GOOGLE_API_KEYS }}
           GOOGLE_SEARCH_ENGINE_IDS: ${{ secrets.GOOGLE_SEARCH_ENGINE_IDS }}
@@ -35,59 +48,39 @@ jobs:
           OUTPUT_DIR: ./state-pages
         run: node scraper-backend.js
       
-      - name: Check for changes
-        id: git-check
-        run: |
-          git diff --exit-code state-pages/ || echo "changes=true" >> $GITHUB_OUTPUT
-      
-      - name: Commit and push updated state pages
-        if: steps.git-check.outputs.changes == 'true'
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action Bot"
-          git add state-pages/
-          git add next-run.json
-          git commit -m "Auto-update: Sign leads scraped on $(date +'%Y-%m-%d %H:%M UTC')"
-          git push
-      
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: List generated files
         if: always()
-        with:
-          name: scrape-results-${{ github.run_number }}
-          path: |
-            state-pages/scrape-summary.json
-            state-pages/raw-data/
-          retention-days: 90
+        run: |
+          echo "Files generated:"
+          ls -la state-pages/ || echo "No state-pages directory found"
       
-      - name: Post success summary
+      - name: Commit and push results
         if: success()
         run: |
-          if [ -f state-pages/scrape-summary.json ]; then
-            echo "✅ FREE lead scraping completed!" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### 📈 Results" >> $GITHUB_STEP_SUMMARY
-            echo "- **Total Leads:** $(jq -r '.totalLeads' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
-            echo "- **States Processed:** $(jq -r '.statesProcessed' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
-            echo "- **Duration:** $(jq -r '.durationSeconds' state-pages/scrape-summary.json)s" >> $GITHUB_STEP_SUMMARY
-            echo "- **Next Run:** $(jq -r '.nextRun' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
-            echo "- **Monthly Cost:** \$0.00 (100% Free)" >> $GITHUB_STEP_SUMMARY
-          fi
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -A
+          git diff --staged --quiet || git commit -m "Auto-update: Sign leads $(date +'%Y-%m-%d %H:%M UTC')"
+          git push
       
-      - name: Create issue on failure
-        if: failure()
-        uses: actions/github-script@v7
+      - name: Upload results
+        if: success()
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: '🚨 Scraper Failed',
-              body: `The lead scraper failed to complete.
-              
-              **Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-              **Time:** ${new Date().toISOString()}
-              
-              Please check the workflow logs for details.`,
-              labels: ['automation', 'bug']
-            })
+          name: scrape-results
+          path: state-pages/
+          retention-days: 90
+      
+      - name: Post summary
+        if: always()
+        run: |
+          echo "## Scraper Run Summary" >> $GITHUB_STEP_SUMMARY
+          if [ -f state-pages/scrape-summary.json ]; then
+            echo "✅ **Status:** Success" >> $GITHUB_STEP_SUMMARY
+            echo "- **Total Leads:** $(jq -r '.totalLeads' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
+            echo "- **States:** $(jq -r '.statesProcessed' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Duration:** $(jq -r '.durationSeconds' state-pages/scrape-summary.json)s" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Status:** Failed" >> $GITHUB_STEP_SUMMARY
+            echo "Check logs above for error details" >> $GITHUB_STEP_SUMMARY
+          fi
