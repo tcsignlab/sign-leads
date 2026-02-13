@@ -20,7 +20,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
       
       - name: Install dependencies
         run: npm install
@@ -72,5 +71,23 @@ jobs:
             echo "- **States Processed:** $(jq -r '.statesProcessed' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
             echo "- **Duration:** $(jq -r '.durationSeconds' state-pages/scrape-summary.json)s" >> $GITHUB_STEP_SUMMARY
             echo "- **Next Run:** $(jq -r '.nextRun' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
-            echo "- **Monthly Cost:** $0.00 (100% Free)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Monthly Cost:** \$0.00 (100% Free)" >> $GITHUB_STEP_SUMMARY
           fi
+      
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Scraper Failed',
+              body: `The lead scraper failed to complete.
+              
+              **Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              **Time:** ${new Date().toISOString()}
+              
+              Please check the workflow logs for details.`,
+              labels: ['automation', 'bug']
+            })
