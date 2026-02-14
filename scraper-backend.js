@@ -83,10 +83,7 @@ const CONFIG = {
 
     OUTPUT: {
         directory:            process.env.OUTPUT_DIR || './state-pages',
-        githubRepo:           process.env.GITHUB_REPO,
-        githubToken:          process.env.GITHUB_TOKEN,
-        deployToGithub:       true,
-        minimumLeadsPerState: 1
+        deployToGithub:       false  // Files committed by GitHub Actions instead
     }
 };
 
@@ -291,11 +288,7 @@ function enrichLead(result, state, queryType) {
         }
     }
     
-    // Temperature scoring - more accurate
-    const hotKeywords = ['grand opening', 'now open', 'just opened', 'opened today', 'construction permit issued', 'breaking ground'];
-    const warmKeywords = ['coming soon', 'opening soon', 'planned', 'announced', 'will open', 'under construction'];
-    const isHot = hotKeywords.some(k => text.includes(k));
-    const temp = isHot ? 'hot' : 'warm';
+    // No temperature scoring - all leads are equal
     
     // Opening timeline
     let opening = 'TBA';
@@ -346,7 +339,6 @@ function enrichLead(result, state, queryType) {
         location,
         phone: 'Contact via source',
         opening,
-        temp,
         signage,
         revenue,
         source: result.url,
@@ -390,8 +382,6 @@ async function scrapeState(state) {
 function generateHTML(state, leads) {
     const stateCode = CONFIG.STATE_CODES[state];
     const ts        = new Date().toISOString().split('T')[0];
-    const hotLeads  = leads.filter(l => l.temp === 'hot').length;
-    const warmLeads = leads.filter(l => l.temp === 'warm').length;
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -413,21 +403,16 @@ function generateHTML(state, leads) {
         .stat-item{text-align:center;padding:15px;background:rgba(0,212,255,.1);border-radius:8px;border:1px solid rgba(0,212,255,.3)}
         .stat-number{display:block;font-size:2em;font-weight:800;color:#00d4ff}
         .filters{display:flex;gap:15px;margin:20px 0;flex-wrap:wrap}
-        .search-bar,.filters select{flex:1;min-width:200px;padding:12px;background:rgba(255,255,255,.1);border:1px solid rgba(0,212,255,.3);border-radius:8px;color:white;font-size:1em}
+        .search-bar{flex:1;min-width:200px;padding:12px;background:rgba(255,255,255,.1);border:1px solid rgba(0,212,255,.3);border-radius:8px;color:white;font-size:1em}
         .search-bar::placeholder{color:rgba(255,255,255,.5)}
         .leads-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:20px;margin:20px 0}
         .lead-card{background:linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.05));padding:20px;border-radius:12px;border:1px solid rgba(0,212,255,.2);position:relative;transition:all .3s}
         .lead-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,212,255,.3);border-color:rgba(0,212,255,.5)}
-        .lead-card.hot{border-color:#ff4444;box-shadow:0 0 20px rgba(255,68,68,.2)}
-        .lead-card.warm{border-color:#ffa500;box-shadow:0 0 20px rgba(255,165,0,.2)}
-        .badge{position:absolute;top:15px;right:15px;padding:6px 12px;border-radius:20px;font-size:.75em;font-weight:800;text-transform:uppercase}
-        .badge-hot{background:linear-gradient(135deg,#ff4444,#cc0000);color:white}
-        .badge-warm{background:linear-gradient(135deg,#ffa500,#ff8c00);color:white}
         .lead-title{font-size:1.4em;font-weight:800;color:#00d4ff;margin:10px 0}
         .lead-detail{color:#94a3b8;margin:8px 0;font-size:.95em}
         .signage-box{background:rgba(0,212,255,.05);padding:12px;border-radius:8px;margin:12px 0;border-left:3px solid #00d4ff}
         .signage-box h4{color:#00d4ff;font-size:.9em;margin-bottom:8px;text-transform:uppercase}
-        .signage-box li{color:#334155;font-size:.9em;padding:2px 0;list-style:none}
+        .signage-box li{color:#cbd5e1;font-size:.9em;padding:2px 0;list-style:none}
         .signage-box li::before{content:"✦ ";color:#00d4ff}
         .revenue-box{background:#d1fae5;padding:12px;border-radius:8px;text-align:center;margin:15px 0;font-weight:bold;color:#047857}
         .contact-btn{width:100%;padding:14px;background:linear-gradient(135deg,#00d4ff,#0099ff);color:white;border:none;border-radius:10px;font-weight:800;cursor:pointer;text-decoration:none;display:block;text-align:center;transition:all .3s}
@@ -446,17 +431,11 @@ function generateHTML(state, leads) {
     </header>
     <div class="stats-bar">
         <div class="stat-item"><span class="stat-number">${leads.length}</span><span>Total Leads</span></div>
-        <div class="stat-item"><span class="stat-number">${hotLeads}</span><span>🔥 Hot</span></div>
-        <div class="stat-item"><span class="stat-number">${warmLeads}</span><span>⚡ Warm</span></div>
         <div class="stat-item"><span class="stat-number">${stateCode}</span><span>State</span></div>
+        <div class="stat-item"><span class="stat-number">${ts}</span><span>Last Updated</span></div>
     </div>
     <div class="filters">
         <input type="text" class="search-bar" id="searchBox" placeholder="Search by name or location..." oninput="filterLeads()">
-        <select id="tempFilter" onchange="filterLeads()">
-            <option value="all">All Temperatures</option>
-            <option value="hot">🔥 Hot Only</option>
-            <option value="warm">⚡ Warm Only</option>
-        </select>
     </div>
     <div class="leads-grid" id="leadsContainer"></div>
     <footer>
@@ -470,8 +449,7 @@ function generateHTML(state, leads) {
         const c=document.getElementById('leadsContainer');
         if(!leads.length){c.innerHTML='<div class="no-leads">No leads match your filters.</div>';return}
         c.innerHTML=leads.map(l=>\`
-            <div class="lead-card \${l.temp}">
-                <span class="badge badge-\${l.temp}">\${l.temp==='hot'?'🔥 HOT LEAD':'⚡ WARM LEAD'}</span>
+            <div class="lead-card">
                 <div class="lead-title">\${l.name}</div>
                 <div class="lead-detail">📍 \${l.location}</div>
                 <div class="lead-detail">📞 \${l.phone}</div>
@@ -485,48 +463,15 @@ function generateHTML(state, leads) {
             </div>\`).join('');
     }
     function filterLeads(){
-        const temp=document.getElementById('tempFilter').value;
         const search=document.getElementById('searchBox').value.toLowerCase();
         displayLeads(allLeads.filter(l=>
-            (temp==='all'||l.temp===temp)&&
-            (search===''||l.name.toLowerCase().includes(search)||l.location.toLowerCase().includes(search))
+            search===''||l.name.toLowerCase().includes(search)||l.location.toLowerCase().includes(search)
         ));
     }
     window.onload=()=>displayLeads(allLeads);
 </script>
 </body>
 </html>`;
-}
-
-// ==================== GITHUB DEPLOYER ====================
-async function deployToGitHub(state, html) {
-    if (!CONFIG.OUTPUT.githubToken || !CONFIG.OUTPUT.githubRepo) return false;
-    try {
-        const { default: fetch } = await import('node-fetch');
-        const filePath = `state-pages/${state.toLowerCase().replace(/ /g,'-')}-sign-leads.html`;
-        const apiBase  = 'https://api.github.com';
-        const headers  = { 'Authorization': `token ${CONFIG.OUTPUT.githubToken}`, 'Accept': 'application/vnd.github.v3+json' };
-
-        let sha = null;
-        try {
-            const r = await fetch(`${apiBase}/repos/${CONFIG.OUTPUT.githubRepo}/contents/${filePath}`, { headers });
-            if (r.ok) sha = (await r.json()).sha;
-        } catch(e) { /* new file */ }
-
-        const body = {
-            message: `Auto-update ${state} — ${new Date().toISOString()}`,
-            content: Buffer.from(html).toString('base64'),
-            branch:  'main'
-        };
-        if (sha) body.sha = sha;
-
-        const put = await fetch(`${apiBase}/repos/${CONFIG.OUTPUT.githubRepo}/contents/${filePath}`, {
-            method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-        });
-        if (put.ok) { logger.success(`GitHub: deployed ${state}`); return true; }
-        logger.error(`GitHub deploy failed ${state}: ${await put.text()}`);
-        return false;
-    } catch(err) { logger.error(`GitHub error: ${err.message}`); return false; }
 }
 
 // ==================== MAIN ====================
@@ -549,15 +494,12 @@ async function runFullScrape() {
             results[state] = leads;
             total += leads.length;
 
-            if (leads.length >= CONFIG.OUTPUT.minimumLeadsPerState) {
-                const html     = generateHTML(state, leads);
-                const filePath = path.join(CONFIG.OUTPUT.directory, `${state.toLowerCase().replace(/ /g,'-')}-sign-leads.html`);
-                await fs.writeFile(filePath, html);
-                logger.success(`Saved: ${filePath} (${leads.length} leads)`);
-                if (CONFIG.OUTPUT.deployToGithub) { await deployToGitHub(state, html); await delay(400); }
-            } else {
-                logger.warning(`${state}: ${leads.length} leads — skipping page`);
-            }
+            // Always write the HTML file - overwrite existing
+            const html     = generateHTML(state, leads);
+            const filePath = path.join(CONFIG.OUTPUT.directory, `${state.toLowerCase().replace(/ /g,'-')}-sign-leads.html`);
+            await fs.writeFile(filePath, html);
+            logger.success(`✅ Saved: ${filePath} (${leads.length} leads)`);
+            
         } catch(err) {
             logger.error(`Error on ${state}: ${err.message}`);
             results[state] = [];
@@ -575,7 +517,7 @@ async function runFullScrape() {
         searchEngine: 'Bing (free, no API key)',
         stateBreakdown: Object.entries(results).map(([s,l]) => ({
             state: s, stateCode: CONFIG.STATE_CODES[s],
-            leadCount: l.length, hotLeads: l.filter(x=>x.temp==='hot').length, warmLeads: l.filter(x=>x.temp==='warm').length
+            leadCount: l.length
         })),
         logs: logger.exportLogs()
     };

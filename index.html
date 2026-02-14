@@ -247,14 +247,6 @@
         <strong style="color:var(--text)" id="qs-online">—</strong>
       </div>
       <div style="display:flex;justify-content:space-between;margin:6px 0">
-        <span>🔥 Hot Leads:</span>
-        <strong style="color:var(--accent)" id="qs-hot">—</strong>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin:6px 0">
-        <span>⚡ Warm Leads:</span>
-        <strong style="color:#ffa500" id="qs-warm">—</strong>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin:6px 0">
         <span>Next Update:</span>
         <strong style="color:#10b981" id="next-run-val">—</strong>
       </div>
@@ -403,9 +395,7 @@ async function loadScrapeData() {
     if (summary.stateBreakdown) {
       summary.stateBreakdown.forEach(s => {
         stateData[s.stateCode] = {
-          leads: s.leadCount || 0,
-          hot: s.hotLeads || 0,
-          warm: s.warmLeads || 0
+          leads: s.leadCount || 0
         };
         if (s.leadCount > 0) availablePages.add(s.stateCode);
       });
@@ -468,12 +458,12 @@ async function buildMap() {
       const abbr = FIPS_TO_ABBR[String(d.id).padStart(2,'0')];
       if (!abbr) return;
       
-      const data = stateData[abbr] || { leads:0, hot:0, warm:0 };
+      const data = stateData[abbr] || { leads:0 };
       const tip = document.getElementById('tooltip');
       
       tip.querySelector('.tt-state').textContent = STATE_NAMES[abbr] || abbr;
       tip.querySelector('.tt-leads').textContent = data.leads || 0;
-      tip.querySelector('.tt-hot-warm').textContent = `🔥 ${data.hot||0} hot  •  ⚡ ${data.warm||0} warm`;
+      tip.querySelector('.tt-hot-warm').textContent = 'Sign industry opportunities';
       
       const statusEl = tip.querySelector('.tt-status');
       if (availablePages.has(abbr)) {
@@ -535,20 +525,16 @@ function applyHeatMap() {
 // STATS + PANELS
 // ═══════════════════════════════════════════════
 function updateStats(summary) {
-  let totalLeads = 0, activeStates = 0, totalHot = 0, totalWarm = 0;
+  let totalLeads = 0, activeStates = 0;
 
   Object.values(stateData).forEach(d => {
     if (d.leads > 0) { totalLeads += d.leads; activeStates++; }
-    totalHot  += d.hot  || 0;
-    totalWarm += d.warm || 0;
   });
 
   document.getElementById('stat-total-leads').textContent    = totalLeads > 0 ? totalLeads.toLocaleString() : '—';
   document.getElementById('stat-active-states').textContent  = activeStates || '—';
   document.getElementById('stat-revenue').textContent        = activeStates > 0 ? '$' + (totalLeads * 0.025).toFixed(1) + 'M+' : '—';
   document.getElementById('qs-online').textContent           = activeStates || '—';
-  document.getElementById('qs-hot').textContent              = totalHot  || '—';
-  document.getElementById('qs-warm').textContent             = totalWarm || '—';
 
   // Next run countdown
   if (nextRunTime) {
@@ -593,7 +579,7 @@ function updateSidePanels(summary) {
   // Activity feed
   const recentStates = sorted.slice(0,5).map(([abbr,d]) => ({
     color:'#10b981',
-    text:`${STATE_NAMES[abbr]} — ${d.leads} leads (🔥${d.hot||0} ⚡${d.warm||0})`,
+    text:`${STATE_NAMES[abbr]} — ${d.leads} leads`,
     time: lastScrapeTime ? timeAgo(lastScrapeTime) : 'recent'
   }));
 
