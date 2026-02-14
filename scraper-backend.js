@@ -161,6 +161,16 @@ function httpGet(url) {
 }
 
 // ==================== BING SEARCH + PARSER ====================
+function decodeEntities(text) {
+    return text
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ');
+}
+
 function parseBingResults(html) {
     const results = [];
     const blocks  = html.split('<li class="b_algo"');
@@ -174,230 +184,185 @@ function parseBingResults(html) {
             let title = linkMatch[2].replace(/<[^>]+>/g, '').trim();
             title     = decodeEntities(title);
 
-            if (url.includes('bing.com') || url.includes('microsoft.com')) continue;
-
-            const snippetMatch = block.match(/<p[^>]*class="[^"]*b_lineclamp[^"]*"[^>]*>(.*?)<\/p>/s)
-                              || block.match(/<p(?![^>]*class="b_attribution")[^>]*>(.*?)<\/p>/s);
+            // Extract snippet
+            const snippetMatch = block.match(/<p[^>]*>(.*?)<\/p>/s);
             let snippet = '';
             if (snippetMatch) {
-                snippet = snippetMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                snippet = snippetMatch[1].replace(/<[^>]+>/g, '').trim();
                 snippet = decodeEntities(snippet);
             }
 
-            if (title && url && url.startsWith('http')) {
-                results.push({ title, url, snippet });
-            }
-        } catch(e) { /* skip */ }
+            results.push({ title, url, snippet });
+        } catch(e) {
+            // Skip malformed results
+        }
     }
     return results;
 }
 
-function decodeEntities(str) {
-    return str
-        .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#x27;/g, "'")
-        .replace(/&nbsp;/g, ' ').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n));
-}
-
-async function searchBing(query, state, retries = 0) {
-    const encoded = encodeURIComponent(`${query} ${state}`);
-    // "tbs=qdr:m" = past month results — more relevant for new openings
-    const url     = `https://www.bing.com/search?q=${encoded}&tbs=qdr%3Am&setlang=en-US`;
-
+async function searchBing(query, retries = 0) {
     try {
-        const { status, body } = await httpGet(url);
-
-        if (status === 429) {
-            const wait = 15000 + Math.random() * 10000;
-            logger.warning(`Bing rate limit — waiting ${(wait/1000).toFixed(0)}s`);
-            await delay(wait);
-            if (retries < CONFIG.RATE_LIMIT.maxRetries) return searchBing(query, state, retries + 1);
-            return [];
+        const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=20`;
+        logger.info(`  Bing: ${query}`);
+        
+        const res = await httpGet(url);
+        
+        if (res.status === 200) {
+            const results = parseBingResults(res.body);
+            logger.info(`  Found: ${results.length} results`);
+            return results;
         }
-
-        if (status !== 200) {
-            logger.warning(`Bing ${status} for "${query}" in ${state}`);
-            if (retries < CONFIG.RATE_LIMIT.maxRetries) { await delay(3000); return searchBing(query, state, retries + 1); }
-            return [];
+        
+        if (retries < CONFIG.RATE_LIMIT.maxRetries) {
+            await delay(3000);
+            return searchBing(query, retries + 1);
         }
-
-        if (body.includes('captcha') || body.includes('verify you') || body.length < 1000) {
-            logger.warning(`Bing block for "${query}" in ${state} — skipping`);
-            await delay(5000);
-            return [];
-        }
-
-        const results = parseBingResults(body);
-        logger.info(`  ${results.length > 0 ? '✓' : '○'} "${query}" + ${state}: ${results.length} results`);
-        return results;
-
+        
+        logger.warning(`  Bing failed: HTTP ${res.status}`);
+        return [];
     } catch(err) {
-        if (retries < CONFIG.RATE_LIMIT.maxRetries) { await delay(3000); return searchBing(query, state, retries + 1); }
-        logger.error(`Search failed "${query}" in ${state}: ${err.message}`);
+        if (retries < CONFIG.RATE_LIMIT.maxRetries) {
+            await delay(3000);
+            return searchBing(query, retries + 1);
+        }
+        logger.error(`  Search error: ${err.message}`);
         return [];
     }
 }
 
-// ==================== LEAD EXTRACTION ====================
-function extractLead(result, state) {
-    if (!result.title || !result.url) return null;
-
-    const combined = `${result.title} ${result.snippet || ''}`.toLowerCase();
-
-    const openingTerms = [
-        'grand opening','now open','opening soon','coming soon','soft opening',
-        'ribbon cutting','breaks ground','groundbreaking','now hiring',
-        'new location','new store','new restaurant','opens','opening',
-        'construction','development','permit','under construction',
-        'retail','franchise','expansion','plaza','strip mall',
-        'shopping center','commercial','tenant','lease','relocat'
-    ];
-    if (!openingTerms.some(t => combined.includes(t))) return null;
-
-    const skipTerms = [
-        'obituary','arrested','murder','crime','stock price',
-        'quarterly earnings','weather','sports score',
-        'indeed.com','glassdoor','linkedin.com/jobs',
-        'wikipedia.org','amazon.com/dp','ebay.com'
-    ];
-    if (skipTerms.some(t => combined.includes(t))) return null;
-
-    try {
-        const h = new URL(result.url).hostname;
-        if (h.endsWith('.co.uk') || h.endsWith('.ca') || h.endsWith('.com.au')) return null;
-    } catch(e) { return null; }
-
-    const snippet     = result.snippet || '';
-    const phoneMatch  = snippet.match(/(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
-    const phone       = phoneMatch ? phoneMatch[0] : 'Contact for details';
-
-    const addrMatch = snippet.match(
-        /\d+\s+[\w\s]+(Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Way|Pkwy|Highway|Hwy)\b/i
-    );
-    const location = addrMatch ? addrMatch[0] : state;
-
-    const dateMatch = snippet.match(
-        /(Q[1-4]\s+\d{4}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}|(?:Spring|Summer|Fall|Winter)\s+\d{4}|\b202[4-9]\b)/i
-    );
-    const opening = dateMatch ? dateMatch[0] : 'Coming soon';
-
-    const hotTerms = ['grand opening','now open','opening soon','coming soon','soft open','ribbon cutting','breaks ground','now hiring'];
-    const isHot    = hotTerms.some(t => combined.includes(t));
-
+// ==================== LEAD ENRICHMENT ====================
+function enrichLead(result, state, queryType) {
+    const text = (result.title + ' ' + result.snippet).toLowerCase();
+    
+    // Extract business name
+    let name = result.title.split('-')[0].split('|')[0].trim();
+    name = name.replace(/\s+(opening|opens|now open|coming soon|grand opening).*/i, '').trim();
+    
+    // Extract location
+    let location = state;
+    const cityMatch = result.snippet.match(/in ([A-Z][a-z]+(?:\s[A-Z][a-z]+)*),?\s/);
+    if (cityMatch) location = `${cityMatch[1]}, ${CONFIG.STATE_CODES[state]}`;
+    
+    // Temperature scoring
+    const hotKeywords = ['grand opening', 'now open', 'just opened', 'construction permit', 'breaking ground'];
+    const warmKeywords = ['coming soon', 'opening soon', 'planned', 'announced', 'will open'];
+    const isHot = hotKeywords.some(k => text.includes(k));
+    const temp = isHot ? 'hot' : 'warm';
+    
+    // Opening timeline
+    let opening = 'TBA';
+    const monthMatch = text.match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}/i);
+    if (monthMatch) opening = monthMatch[0];
+    else if (text.includes('now open')) opening = 'OPEN NOW';
+    else if (text.includes('coming soon')) opening = 'Soon';
+    
+    // Signage opportunities
+    const signage = [];
+    if (text.includes('restaurant') || text.includes('fast food') || text.includes('drive')) {
+        signage.push('Exterior Channel Letters', 'Drive-Thru Menu Boards', 'Monument Sign');
+    }
+    if (text.includes('retail') || text.includes('store') || text.includes('shopping')) {
+        signage.push('Storefront Signage', 'Window Graphics', 'Wayfinding Signs');
+    }
+    if (text.includes('coffee') || text.includes('cafe')) {
+        signage.push('Outdoor A-Frame', 'Menu Boards', 'Branded Displays');
+    }
+    if (signage.length === 0) {
+        signage.push('Custom Exterior Signage', 'Interior Branding', 'Directional Signs');
+    }
+    
+    // Revenue estimate
+    let revenue = '$5,000-$15,000';
+    if (text.includes('chick-fil-a') || text.includes('costco') || text.includes('shopping center')) {
+        revenue = '$25,000-$75,000';
+    } else if (text.includes('starbucks') || text.includes('chipotle') || text.includes('franchise')) {
+        revenue = '$15,000-$35,000';
+    }
+    
     return {
-        state, stateCode: CONFIG.STATE_CODES[state],
-        name:       cleanTitle(result.title),
-        subtitle:   snippet.substring(0, 140),
-        location, contact: 'Development Team', phone, opening,
-        temp:       isHot ? 'hot' : 'warm',
-        signage:    estimateSignage(combined),
-        revenue:    estimateRevenue(combined),
-        source:     result.url,
-        discovered: new Date().toISOString()
+        name,
+        location,
+        phone: 'Contact via source',
+        opening,
+        temp,
+        signage,
+        revenue,
+        source: result.url,
+        queryType
     };
-}
-
-function cleanTitle(title) {
-    let name = title.replace(/\s*[-|—]\s*[^-|—]{0,50}$/, '').trim();
-    name = name.replace(/\s+(is coming|is opening|to open|will open|announces?).*$/i, '').trim();
-    if (name.length > 72) name = name.substring(0, 69) + '...';
-    return name || 'New Commercial Development';
-}
-
-function estimateSignage(text) {
-    const signs = new Set(['Monument sign','Channel letters','Illuminated signage']);
-    if (text.match(/restaurant|cafe|coffee|food|dining|bar|grill|pizza|burger|taco|wing|bbq|sushi/))
-        { signs.add('Menu boards'); signs.add('Drive-thru signage'); }
-    if (text.match(/retail|store|shop|boutique|outlet|clothing|apparel|grocery|supermarket/))
-        { signs.add('Interior wayfinding'); signs.add('Window graphics'); }
-    if (text.match(/office|medical|clinic|dental|urgent care|health|pharmacy|veterinary/))
-        { signs.add('Directory signage'); signs.add('Suite identification'); }
-    if (text.match(/hotel|motel|inn|suites|lodge|resort/))
-        { signs.add('Pylon sign'); signs.add('Illuminated facade'); }
-    if (text.match(/auto|car|dealer|vehicle|tire|oil|mechanic|collision/))
-        { signs.add('Pylon sign'); signs.add('Lot banners'); }
-    if (text.match(/gym|fitness|crossfit|yoga|planet fitness|anytime/))
-        { signs.add('Backlit letters'); signs.add('Parking signage'); }
-    if (text.match(/bank|credit union|financial|insurance/))
-        { signs.add('Illuminated sign cabinet'); }
-    if (text.match(/gas|fuel|station|convenience|7-eleven|circle k|wawa|sheetz/))
-        { signs.add('Canopy signage'); signs.add('Price sign'); }
-    if (text.match(/strip mall|shopping center|plaza|mixed.use/))
-        { signs.add('Pylon \/ pole sign'); signs.add('Tenant panel signs'); }
-    return [...signs];
-}
-
-function estimateRevenue(text) {
-    if (text.match(/shopping center|mall|plaza|mixed.use|strip mall/)) return '$60K – $120K';
-    if (text.match(/national chain|franchise|chick-fil-a|mcdonald|starbucks|chipotle|costco/)) return '$45K – $90K';
-    if (text.match(/restaurant|hotel|drive.thru|fast food/))           return '$30K – $65K';
-    if (text.match(/retail|medical|auto|bank|grocery/))                return '$20K – $45K';
-    return '$12K – $30K';
 }
 
 // ==================== STATE SCRAPER ====================
 async function scrapeState(state) {
-    logger.info(`\n===== ${state.toUpperCase()} =====`);
+    logger.info(`\n🔍 ${state.toUpperCase()}`);
     const allResults = [];
-    const allQueries = [...CONFIG.KEYWORDS, ...CONFIG.FRANCHISE_CHAINS];
-
+    const allQueries = [
+        ...CONFIG.KEYWORDS.map(k => `${k} ${state}`),
+        ...CONFIG.FRANCHISE_CHAINS.map(f => `${f} ${state}`)
+    ];
+    
     for (const query of allQueries) {
-        const results = await searchBing(query, state);
+        const results = await searchBing(query);
         allResults.push(...results);
-        const d = CONFIG.RATE_LIMIT.minDelay + Math.random() * (CONFIG.RATE_LIMIT.maxDelay - CONFIG.RATE_LIMIT.minDelay);
-        await delay(d);
+        await delay(Math.random() * (CONFIG.RATE_LIMIT.maxDelay - CONFIG.RATE_LIMIT.minDelay) + CONFIG.RATE_LIMIT.minDelay);
     }
-
-    const seen   = new Set();
+    
+    // Deduplicate by URL
+    const seen = new Set();
     const unique = allResults.filter(r => {
-        if (!r.url || seen.has(r.url)) return false;
+        if (seen.has(r.url)) return false;
         seen.add(r.url);
         return true;
     });
-
-    logger.info(`  ${unique.length} unique results → extracting leads...`);
-    const leads = unique.map(r => extractLead(r, state)).filter(Boolean);
-    logger.success(`  ${leads.length} leads in ${state}`);
+    
+    // Enrich into leads
+    const leads = unique.map(r => enrichLead(r, state, 'bing'));
+    
+    logger.success(`${state}: ${leads.length} unique leads`);
     return leads;
 }
 
 // ==================== HTML GENERATOR ====================
 function generateHTML(state, leads) {
     const stateCode = CONFIG.STATE_CODES[state];
+    const ts        = new Date().toISOString().split('T')[0];
     const hotLeads  = leads.filter(l => l.temp === 'hot').length;
     const warmLeads = leads.filter(l => l.temp === 'warm').length;
-    const ts        = new Date().toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${state.toUpperCase()} SIGN LEADS — ${leads.length} Opportunities</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${state} Sign Leads | Live Opportunities for Sign Companies</title>
+    <meta name="description" content="${leads.length} active sign opportunities in ${state}. Grand openings, new construction, retail developments - updated daily.">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#0f3460,#16213e);padding:10px;min-height:100vh}
-        .container{max-width:2000px;margin:0 auto;background:white;border-radius:15px;box-shadow:0 10px 40px rgba(0,0,0,.3)}
-        header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:white;padding:30px;text-align:center;border-radius:15px 15px 0 0}
-        header h1{font-size:2.5em;color:#00d4ff;margin-bottom:8px;text-shadow:0 0 20px rgba(0,212,255,.5)}
-        header p{color:#94a3b8;font-size:.9em}
-        .back-link{display:inline-block;margin-top:12px;color:#00d4ff;font-size:.8em;text-decoration:none;opacity:.8}
-        .back-link:hover{opacity:1}
-        .stats-bar{background:linear-gradient(135deg,#00d4ff,#0099ff);color:white;padding:20px;display:flex;justify-content:space-around;flex-wrap:wrap;gap:20px}
-        .stat-item{text-align:center}.stat-number{font-size:2.5em;font-weight:bold;display:block}
-        .filters{background:#f8fafc;padding:20px;display:flex;gap:15px;align-items:center;flex-wrap:wrap;border-bottom:3px solid #00d4ff}
-        .filters select,.filters input{padding:10px 15px;border:2px solid #e2e8f0;border-radius:8px;font-size:.95em}
-        .search-bar{flex:1;min-width:250px}
-        .leads-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:25px;padding:30px;background:#f8fafc;min-height:200px}
-        .lead-card{background:white;border:2px solid #e2e8f0;border-left:6px solid #e2e8f0;border-radius:12px;padding:25px;transition:all .3s}
-        .lead-card:hover{transform:translateY(-8px);box-shadow:0 15px 35px rgba(0,212,255,.2);border-color:#00d4ff}
-        .lead-card.hot{border-left-color:#ef4444}.lead-card.warm{border-left-color:#f59e0b}
-        .badge{display:inline-block;padding:6px 14px;border-radius:20px;font-size:.75em;font-weight:800;text-transform:uppercase;margin-bottom:12px}
-        .badge-hot{background:#ef4444;color:white}.badge-warm{background:#f59e0b;color:white}
-        .lead-title{font-size:1.2em;font-weight:900;color:#1a1a2e;margin-bottom:10px;line-height:1.3}
-        .lead-detail{margin:7px 0;color:#475569;font-size:.9em}
-        .signage-box{background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-left:4px solid #00d4ff;padding:12px 15px;margin:15px 0;border-radius:8px}
-        .signage-box h4{color:#0099ff;margin-bottom:6px;font-size:.85em;text-transform:uppercase}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#e4e7eb;line-height:1.6}
+        .container{max-width:1400px;margin:0 auto;padding:20px;background:rgba(255,255,255,.02);border-radius:15px}
+        header{background:linear-gradient(135deg,#00d4ff,#0099ff);padding:30px;border-radius:15px 15px 0 0;text-align:center;color:white}
+        header h1{font-size:2.5em;margin-bottom:8px;text-shadow:2px 2px 4px rgba(0,0,0,.3)}
+        header p{font-size:1.1em;opacity:.95}
+        .back-link{display:inline-block;margin-top:15px;color:white;text-decoration:none;padding:8px 20px;background:rgba(255,255,255,.2);border-radius:25px;transition:all .3s}
+        .back-link:hover{background:rgba(255,255,255,.3);transform:scale(1.05)}
+        .stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin:20px 0;padding:20px;background:rgba(255,255,255,.05);border-radius:10px}
+        .stat-item{text-align:center;padding:15px;background:rgba(0,212,255,.1);border-radius:8px;border:1px solid rgba(0,212,255,.3)}
+        .stat-number{display:block;font-size:2em;font-weight:800;color:#00d4ff}
+        .filters{display:flex;gap:15px;margin:20px 0;flex-wrap:wrap}
+        .search-bar,.filters select{flex:1;min-width:200px;padding:12px;background:rgba(255,255,255,.1);border:1px solid rgba(0,212,255,.3);border-radius:8px;color:white;font-size:1em}
+        .search-bar::placeholder{color:rgba(255,255,255,.5)}
+        .leads-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:20px;margin:20px 0}
+        .lead-card{background:linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.05));padding:20px;border-radius:12px;border:1px solid rgba(0,212,255,.2);position:relative;transition:all .3s}
+        .lead-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,212,255,.3);border-color:rgba(0,212,255,.5)}
+        .lead-card.hot{border-color:#ff4444;box-shadow:0 0 20px rgba(255,68,68,.2)}
+        .lead-card.warm{border-color:#ffa500;box-shadow:0 0 20px rgba(255,165,0,.2)}
+        .badge{position:absolute;top:15px;right:15px;padding:6px 12px;border-radius:20px;font-size:.75em;font-weight:800;text-transform:uppercase}
+        .badge-hot{background:linear-gradient(135deg,#ff4444,#cc0000);color:white}
+        .badge-warm{background:linear-gradient(135deg,#ffa500,#ff8c00);color:white}
+        .lead-title{font-size:1.4em;font-weight:800;color:#00d4ff;margin:10px 0}
+        .lead-detail{color:#94a3b8;margin:8px 0;font-size:.95em}
+        .signage-box{background:rgba(0,212,255,.05);padding:12px;border-radius:8px;margin:12px 0;border-left:3px solid #00d4ff}
+        .signage-box h4{color:#00d4ff;font-size:.9em;margin-bottom:8px;text-transform:uppercase}
         .signage-box li{color:#334155;font-size:.9em;padding:2px 0;list-style:none}
         .signage-box li::before{content:"✦ ";color:#00d4ff}
         .revenue-box{background:#d1fae5;padding:12px;border-radius:8px;text-align:center;margin:15px 0;font-weight:bold;color:#047857}
