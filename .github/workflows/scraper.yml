@@ -1,4 +1,4 @@
-name: Sign Lead Scraper
+name: Sign Lead Scraper (Auto-Cleanup)
 
 on:
   schedule:
@@ -25,6 +25,31 @@ jobs:
       - name: Install dependencies
         run: |
           npm install node-fetch
+      
+      - name: Cleanup old state pages
+        run: |
+          echo "🧹 Cleaning up old state pages..."
+          if [ -d "state-pages" ]; then
+            echo "📁 Found state-pages directory"
+            html_count=$(ls state-pages/*.html 2>/dev/null | wc -l)
+            echo "   Found $html_count HTML files"
+            if [ $html_count -gt 0 ]; then
+              echo "🗑️  Deleting old HTML files..."
+              rm -f state-pages/*.html
+              echo "✅ Deleted $html_count files"
+            else
+              echo "   No HTML files to delete"
+            fi
+            
+            if [ -f "state-pages/scrape-summary.json" ]; then
+              echo "🗑️  Deleting old scrape-summary.json..."
+              rm -f state-pages/scrape-summary.json
+              echo "✅ Deleted scrape-summary.json"
+            fi
+          else
+            echo "📁 No state-pages directory yet (will be created)"
+          fi
+          echo "✅ Cleanup complete!"
       
       - name: Run scraper
         env:
