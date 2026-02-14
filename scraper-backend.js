@@ -85,10 +85,10 @@ const CONFIG = {
     ],
 
     RATE_LIMIT: {
-        minDelay:   1200,
-        maxDelay:   2500,
-        stateDelay: 2000,
-        maxRetries: 2
+        minDelay:   1500,
+        maxDelay:   3000,
+        stateDelay: 3000,
+        maxRetries: 3
     },
 
     OUTPUT: {
@@ -188,7 +188,7 @@ function parseBingResults(html) {
         'urbandictionary.com', 'thesaurus.com', 'definitions.net', 'yourdictionary.com',
         'reddit.com', 'facebook.com', 'twitter.com', 'pinterest.com', 'instagram.com',
         'youtube.com', 'tiktok.com', 'linkedin.com/posts', 'amazon.com', 'ebay.com',
-        'yelp.com/search', 'tripadvisor.com', 'booking.com', 'expedia.com'
+        'yelp.com/search', 'tripadvisor.com', 'booking.com', 'expedia.com', 'archive.org', 'oldnews.com'
     ];
 
     for (const block of blocks.slice(1)) {
@@ -232,24 +232,26 @@ function parseBingResults(html) {
 
 async function searchBing(query, retries = 0) {
     try {
-        const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=20`;
-        logger.info(`  Bing: ${query}`);
-        
-        const res = await httpGet(url);
-        
-        if (res.status === 200) {
-            const results = parseBingResults(res.body);
-            logger.info(`  Found: ${results.length} results`);
-            return results;
+        const results = [];
+        let page = 1;
+        const count = 50; // Max ~50 per page
+        while (page <= 3) { // Up to 3 pages (~150 results)
+            const offset = (page - 1) * count + 1;
+            const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=${count}&first=${offset}`;
+            logger.info(`  Bing: ${query} (Page ${page})`);
+            const res = await httpGet(url);
+            if (res.status === 200) {
+                const pageResults = parseBingResults(res.body);
+                if (pageResults.length < 10) break; // Stop if few results
+                results.push(...pageResults);
+            } else {
+                break;
+            }
+            await delay(1500 + Math.random() * 1000); // Gentle delay
+            page++;
         }
-        
-        if (retries < CONFIG.RATE_LIMIT.maxRetries) {
-            await delay(3000);
-            return searchBing(query, retries + 1);
-        }
-        
-        logger.warning(`  Bing failed: HTTP ${res.status}`);
-        return [];
+        logger.info(`  Found: ${results.length} results`);
+        return results;
     } catch(err) {
         if (retries < CONFIG.RATE_LIMIT.maxRetries) {
             await delay(3000);
@@ -272,6 +274,10 @@ function enrichLead(result, state, queryType) {
         'azcentral', 'miamiherald', 'dallasnews', 'ajc.com', 'chicagotribune'
     ];
     const isPrioritySource = priorityDomains.some(d => url.includes(d));
+    
+    // New: Require future indicator
+    const hasFuture = /2026|2027|2028|future|upcoming|planned|will open|set to open|coming soon/i.test(text);
+    if (!hasFuture && !isPrioritySource) return null; // Skip old unless priority
     
     // RELAXED FILTERS - Let more through, especially from priority sources
     
@@ -365,6 +371,7 @@ function enrichLead(result, state, queryType) {
     const seasonMatch = text.match(/(spring|summer|fall|winter|early|late|mid)\s+\d{4}/i);
     const quarterMatch = text.match(/q[1-4]\s+\d{4}/i);
     const yearMatch = text.match(/(202[5-7])/);
+    const futureYearMatch = text.match(/(202[6-9])/);
     
     if (monthMatch) {
         opening = monthMatch[0];
@@ -376,6 +383,8 @@ function enrichLead(result, state, queryType) {
         opening = 'OPEN NOW';
     } else if (/opening soon|coming soon|will open|plans to open|set to open/i.test(text)) {
         opening = 'Soon';
+    } else if (futureYearMatch) {
+        opening = futureYearMatch[1];
     } else if (yearMatch) {
         opening = yearMatch[1];
     }
@@ -447,67 +456,81 @@ async function scrapeState(state) {
     logger.info(`\n🔍 ${state.toUpperCase()}`);
     const allResults = [];
     
-    // PHASE 1: News + business publications (Bing friendly - no site: operator)
-    logger.info(`  Phase 1: News & business publications...`);
-    const newsKeywords = [
-        `"grand opening" ${state} restaurant OR retail`,
-        `"now open" ${state} business`,
-        `"construction permit" ${state} restaurant OR store`,
-        `"new location" ${state} franchise OR chain`,
-        `"breaking ground" ${state} commercial development`,
-        `"strip mall" ${state} construction OR development OR leasing`,
-        `"shopping center" ${state} new OR construction OR tenants`,
-        `"retail center" ${state} leasing OR opening`,
-        `"plaza" ${state} construction OR new tenants`,
+    // PHASE 1: Press Releases & Announcements
+    logger.info(`  Phase 1: Press Releases & Announcements...`);
+    const phase1Queries = [
+        `"new business opening" OR "grand opening" OR "store opening" OR "franchise expansion" site:prnewswire.com OR site:businesswire.com "2026" OR "2027" ${state}`,
+        `"business expansion" OR "new location" OR "development agreement" "signage" OR "sign installation" site:globenewswire.com "2026" ${state}`,
+        `intitle:"press release" "new store" OR "ribbon cutting" OR "opening soon" "2026" OR "future" ${state}`
     ];
-    
-    for (const keyword of newsKeywords) {
-        const results = await searchBing(keyword);
-        allResults.push(...results);
-        await delay(Math.random() * 1000 + 1000);
-    }
-    
-    // PHASE 2: High-value franchises
-    logger.info(`  Phase 2: Major franchises...`);
-    const topFranchises = [
-        'Chick-fil-A', 'Dutch Bros', "Raising Cane's", 'Starbucks', 
-        'Chipotle', 'Five Guys', 'Wingstop', 'Crumbl Cookies'
-    ];
-    
-    for (const franchise of topFranchises) {
-        const query = `${franchise} opening ${state} 2025 OR 2026`;
+    for (const query of phase1Queries) {
         const results = await searchBing(query);
         allResults.push(...results);
         await delay(Math.random() * 1000 + 1000);
     }
     
-    // PHASE 3: Strip malls & commercial real estate
-    logger.info(`  Phase 3: Commercial real estate & leasing...`);
-    const commercialQueries = [
-        `strip mall leasing ${state}`,
-        `shopping center construction ${state}`,
-        `retail plaza development ${state}`,
-        `new strip center ${state}`,
-        `commercial retail leasing ${state}`,
+    // PHASE 2: RFPs & Tenders
+    logger.info(`  Phase 2: RFPs & Tenders...`);
+    const phase2Queries = [
+        `"request for proposal" OR "RFP" OR "tender" "signage" OR "digital signs" OR "outdoor signs" filetype:pdf "2026" OR "2027" ${state}`,
+        `"bid opportunity" OR "solicitation" "signage vendor" OR "sign maintenance" site:gov OR site:org filetype:pdf ${state}`,
+        `intitle:"RFP" "facility maintenance" OR "construction management" "signage" filetype:pdf "2026" ${state}`
     ];
+    for (const query of phase2Queries) {
+        const results = await searchBing(query);
+        allResults.push(...results);
+        await delay(Math.random() * 1000 + 1000);
+    }
     
+    // PHASE 3: Local Newspapers & Chambers
+    logger.info(`  Phase 3: Local Newspapers & Chambers...`);
+    const phase3Queries = [
+        `"new business announcement" OR "store opening" OR "grand opening" site:miamiherald.com OR site:orlandosentinel.com OR site:tcpalm.com "2026" OR "future" ${state}`,
+        `"business ribbon cutting" OR "new shop opening" OR "expansion announcement" site:usatoday.com OR site:local.newspaper.com "2026" ${state}`,
+        `"chamber of commerce" "new members" OR "business announcements" OR "opening events" site:chamberofcommerce.com OR site:localchamber.org "2026" ${state}`
+    ];
+    if (state === 'Florida') {
+        phase3Queries.push(`"new business opening" "Port Saint Lucie" OR "Treasure Coast" site:tcpalm.com "2026"`);
+    }
+    for (const query of phase3Queries) {
+        const results = await searchBing(query);
+        allResults.push(...results);
+        await delay(Math.random() * 1000 + 1000);
+    }
+    
+    // PHASE 4: Franchises & Commercial
+    logger.info(`  Phase 4: Franchises & Commercial...`);
+    const topFranchises = [
+        'Chick-fil-A', 'Dutch Bros', "Raising Cane's", 'Starbucks', 
+        'Chipotle', 'Five Guys', 'Wingstop', 'Crumbl Cookies'
+    ];
+    for (const franchise of topFranchises) {
+        const query = `${franchise} opening OR expansion "2026" OR "2027" ${state}`;
+        const results = await searchBing(query);
+        allResults.push(...results);
+        await delay(Math.random() * 1000 + 1000);
+    }
+    const commercialQueries = [
+        `strip mall leasing OR construction "2026" ${state}`,
+        `shopping center development OR tenants "future" ${state}`,
+        `commercial retail leasing OR new plaza "2026" ${state}`
+    ];
     for (const query of commercialQueries) {
         const results = await searchBing(query);
         allResults.push(...results);
         await delay(Math.random() * 1000 + 1000);
     }
     
-    // PHASE 4: General retail/restaurant openings
-    logger.info(`  Phase 4: General openings...`);
-    const generalQueries = [
-        `restaurant opening ${state} 2025`,
-        `retail store opening ${state}`,
+    // PHASE 5: General Future Openings
+    logger.info(`  Phase 5: General Future Openings...`);
+    const phase5Queries = [
+        `restaurant OR retail opening "2026" OR "2027" OR "coming 2026" ${state}`,
+        `new store OR franchise "expansion 2026" OR "opening soon 2026" ${state}`
     ];
-    
-    for (const query of generalQueries) {
+    for (const query of phase5Queries) {
         const results = await searchBing(query);
         allResults.push(...results);
-        await delay(Math.random() * 1000 + 1200);
+        await delay(Math.random() * 1000 + 1000);
     }
     
     // Deduplicate by URL
@@ -636,8 +659,9 @@ async function runFullScrape() {
     const start   = Date.now();
     const results = {};
     let total     = 0;
+    const statesToScrape = process.env.STATE ? [process.env.STATE] : CONFIG.US_STATES; // e.g., STATE=Florida
 
-    for (const state of CONFIG.US_STATES) {
+    for (const state of statesToScrape) {
         try {
             const leads = await scrapeState(state);
             results[state] = leads;
