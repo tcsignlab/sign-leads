@@ -37,6 +37,16 @@ const CONFIG = {
         'Wisconsin':'WI','Wyoming':'WY'
     },
 
+    // ── HIGH-PRIORITY NEWS SOURCES ─────────────────────────────
+    // Target these domains first for highest quality leads
+    PRIORITY_DOMAINS: [
+        'bizjournals.com', 'nrn.com', 'qsrmagazine.com', 'restaurantbusinessonline.com',
+        'fsrmagazine.com', 'chainstoreage.com', 'retaildive.com', 'eater.com',
+        'bisnow.com', 'therealdeal.com', 'commercialobserver.com', 'constructiondive.com',
+        'shoppingcenterbusiness.com', 'icsc.com', 'azcentral.com', 'dallasnews.com',
+        'ajc.com', 'miamiherald.com', 'chicagotribune.com', 'latimes.com'
+    ],
+
     // ── HIGH-SIGNAL SEARCH QUERIES ─────────────────────────────
     // Matches real news headlines. Short, no year, broad.
     KEYWORDS: [
@@ -254,82 +264,137 @@ async function searchBing(query, retries = 0) {
 function enrichLead(result, state, queryType) {
     const text = (result.title + ' ' + result.snippet).toLowerCase();
     
-    // QUALITY FILTERS - Skip if result doesn't look like a real business lead
-    const hasBusinessIndicators = 
-        /restaurant|store|retail|shop|cafe|coffee|franchise|business|location|construction|development|opening|permit/i.test(text);
+    // STRICT FILTERS - ONLY signage opportunities from businesses opening/expanding
     
-    const hasLocationIndicators = 
-        /street|avenue|road|blvd|boulevard|plaza|center|mall|district|downtown|city|county/i.test(text);
+    // 1. MUST have opening/construction indicators
+    const hasOpeningIndicators = 
+        /opening|opens|opened|grand opening|now open|coming soon|under construction|breaking ground|construction permit|new location|new store|new restaurant|expansion/i.test(text);
     
-    // Must have at least business context
-    if (!hasBusinessIndicators) {
-        return null; // Skip this result
+    if (!hasOpeningIndicators) {
+        return null; // Not about a business opening
     }
     
-    // Extract business name - more careful extraction
+    // 2. MUST be a physical business that needs signage
+    const isPhysicalBusiness = 
+        /restaurant|cafe|coffee|food|retail|store|shop|boutique|salon|spa|gym|fitness|hotel|bank|clinic|medical|dental|pharmacy|gas station|convenience|grocery|supermarket|franchise|plaza|mall|shopping center|strip center|commercial/i.test(text);
+    
+    if (!isPhysicalBusiness) {
+        return null; // Not a physical business
+    }
+    
+    // 3. REJECT bad content (listicles, reviews, closures)
+    const isBadContent = 
+        /best\s+restaurants|top\s+10|things\s+to\s+do|restaurants\s+to\s+try|where\s+to\s+eat|guide\s+to|history\s+of|definition|meaning|closed|closing|demolished|shuttered/i.test(text);
+    
+    if (isBadContent) {
+        return null; // Listicle or closed business
+    }
+    
+    // 4. Must have specific business name or be about permits/construction
+    const hasSpecificBusiness = 
+        /([A-Z][a-z]+(?:'s)?(?:\s+[A-Z][a-z]+){0,3})\s+(restaurant|cafe|coffee|store|shop|opening|opens)/i.test(result.title) ||
+        /(permit|construction|development)\s+(issued|approved|begins|announced)/i.test(text);
+    
+    if (!hasSpecificBusiness) {
+        return null; // Too generic
+    }
+    
+    // Extract business name
     let name = result.title.split(/[-–—|]/)[0].trim();
-    name = name.replace(/\s+(opening|opens|now open|coming soon|grand opening|new location).*/i, '').trim();
+    name = name
+        .replace(/\s+(opening|opens|opened|now open|coming soon|grand opening|to open|will open|announces|breaks ground).*/i, '')
+        .replace(/^(new|a|the)\s+/i, '')
+        .trim();
     
-    // Skip if name is too generic or looks like an article title
-    if (name.length < 3 || /^(new|now|grand|opening|coming|see|view|what|how|the\s)/i.test(name)) {
-        name = result.title.substring(0, 50).trim();
-    }
-    
-    // Extract location with better accuracy
-    let location = state;
-    const cityMatch = result.snippet.match(/in\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)*),?\s+(FL|CA|TX|NY|[A-Z]{2})/i);
-    if (cityMatch) {
-        location = `${cityMatch[1]}, ${cityMatch[2].toUpperCase()}`;
-    } else {
-        // Try to find city name in title
-        const titleCityMatch = result.title.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*),?\s+(FL|CA|TX|NY|[A-Z]{2})/i);
-        if (titleCityMatch) {
-            location = `${titleCityMatch[1]}, ${titleCityMatch[2].toUpperCase()}`;
+    // Try to extract better name if needed
+    if (name.length < 5 || /^(coming|opening|new|grand)/i.test(name)) {
+        const nameMatch = result.snippet.match(/([A-Z][a-z]+(?:'s)?(?:\s+[A-Z][a-z]+){0,3})\s+(?:restaurant|cafe|store|shop|will|to|is)/i);
+        if (nameMatch) {
+            name = nameMatch[1];
+        } else {
+            name = result.title.substring(0, 60).replace(/\s*[-–—|].*/,'').trim();
         }
     }
     
-    // No temperature scoring - all leads are equal
+    if (name.length < 3 || name.length > 100) {
+        return null; // Name not valid
+    }
+    
+    // Extract location
+    let location = state;
+    const stateAbbr = CONFIG.STATE_CODES[state];
+    const locationPatterns = [
+        new RegExp(`in\\s+([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*),?\\s+${stateAbbr}`, 'i'),
+        new RegExp(`([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*),?\\s+${stateAbbr}`, 'i'),
+        /in\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/,
+    ];
+    
+    for (const pattern of locationPatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+            location = `${match[1]}, ${stateAbbr}`;
+            break;
+        }
+    }
     
     // Opening timeline
     let opening = 'TBA';
-    const monthMatch = text.match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}/i);
+    const monthMatch = text.match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2},?\s+)?\d{4}/i);
     const seasonMatch = text.match(/(spring|summer|fall|winter|early|late|mid)\s+\d{4}/i);
+    const quarterMatch = text.match(/q[1-4]\s+\d{4}/i);
     
     if (monthMatch) opening = monthMatch[0];
+    else if (quarterMatch) opening = quarterMatch[0].toUpperCase();
     else if (seasonMatch) opening = seasonMatch[0];
-    else if (text.includes('now open') || text.includes('just opened')) opening = 'OPEN NOW';
-    else if (text.includes('coming soon') || text.includes('opening soon')) opening = 'Soon';
-    else if (text.includes('2025')) opening = '2025';
-    else if (text.includes('2026')) opening = '2026';
+    else if (/opened|now open|just opened/i.test(text)) opening = 'OPEN NOW';
+    else if (/opening soon|coming soon/i.test(text)) opening = 'Soon';
+    else if (/2026/i.test(text)) opening = '2026';
+    else if (/2025/i.test(text)) opening = '2025';
     
-    // Signage opportunities based on business type
+    // Signage opportunities - ONLY signage products for each business type
     const signage = [];
-    if (/restaurant|food|dining|eatery|grill|kitchen/i.test(text)) {
-        signage.push('Exterior Channel Letters', 'Interior Menu Boards', 'Window Graphics');
-    } else if (/fast food|drive.?thru|quick service/i.test(text)) {
-        signage.push('Drive-Thru Menu Boards', 'Pylon Sign', 'Digital Display Boards');
-    } else if (/coffee|cafe|espresso/i.test(text)) {
-        signage.push('Storefront Signage', 'Outdoor A-Frame', 'Menu Boards');
-    } else if (/retail|store|shop|boutique/i.test(text)) {
-        signage.push('Storefront Signage', 'Window Displays', 'Wayfinding Signs');
-    } else if (/shopping center|mall|plaza/i.test(text)) {
-        signage.push('Monument Sign', 'Directional Signage', 'Tenant Signs');
-    } else if (/hotel|resort|lodging/i.test(text)) {
-        signage.push('Exterior Signage', 'Wayfinding System', 'Room Signage');
-    } else if (/gym|fitness|health club/i.test(text)) {
-        signage.push('Channel Letters', 'Window Graphics', 'Interior Branding');
+    
+    if (/fast.?food|quick.?service|drive.?thru|burger|chicken|taco|pizza|sandwich/i.test(text)) {
+        signage.push('Drive-Thru Menu Board System', 'Pylon/Monument Sign', 'Exterior Channel Letters', 'Digital Menu Displays');
+    } else if (/coffee|cafe|espresso|starbucks|dutch bros/i.test(text)) {
+        signage.push('Exterior Channel Letters', 'Drive-Thru Menu Boards', 'Outdoor A-Frame Signs', 'Interior Menu Boards');
+    } else if (/restaurant|dining|grill|bistro|eatery/i.test(text)) {
+        signage.push('Exterior Channel Letters', 'Monument Sign', 'Window Graphics', 'Interior Menu Boards');
+    } else if (/retail|store|shop|boutique|clothing/i.test(text)) {
+        signage.push('Storefront Channel Letters', 'Window Displays & Graphics', 'Wayfinding Signage', 'Interior Branding');
+    } else if (/shopping\s+center|mall|plaza|strip\s+center|retail\s+development/i.test(text)) {
+        signage.push('Monument/Pylon Sign', 'Tenant Panel System', 'Directional Signage', 'Parking Wayfinding');
+    } else if (/gym|fitness|health\s+club|workout/i.test(text)) {
+        signage.push('Exterior Channel Letters', 'Window Graphics', 'Interior Motivational Graphics', 'Wayfinding');
+    } else if (/hotel|resort|inn|lodging/i.test(text)) {
+        signage.push('Monument Sign', 'Building Identification', 'Wayfinding System', 'Room Number Signs');
+    } else if (/bank|credit\s+union|financial/i.test(text)) {
+        signage.push('Monument Sign', 'Channel Letters', 'Drive-Thru Signage', 'Interior Branding');
+    } else if (/medical|dental|clinic|healthcare|pharmacy/i.test(text)) {
+        signage.push('Monument Sign', 'Building Identification', 'Wayfinding Signage', 'ADA Compliant Signs');
+    } else if (/gas\s+station|convenience|c-store/i.test(text)) {
+        signage.push('Pylon Sign with Price Display', 'Canopy Signage', 'Storefront Letters', 'Pump Toppers');
+    } else if (/grocery|supermarket|market/i.test(text)) {
+        signage.push('Monument/Pylon Sign', 'Storefront Channel Letters', 'Interior Wayfinding', 'Department Signs');
     } else {
-        signage.push('Custom Exterior Signage', 'Building Identification', 'Wayfinding Signs');
+        signage.push('Exterior Building Signage', 'Channel Letter Set', 'Monument Sign', 'Interior Wayfinding');
     }
     
-    // Revenue estimate based on business type and keywords
-    let revenue = '$5,000-$15,000';
-    if (/chick.?fil.?a|costco|walmart|target|whole foods/i.test(text)) {
-        revenue = '$40,000-$100,000';
-    } else if (/shopping center|mall|plaza|development/i.test(text)) {
-        revenue = '$25,000-$75,000';
-    } else if (/starbucks|chipotle|panera|five guys|shake shack/i.test(text)) {
+    // Revenue estimate - based on business size and type
+    let revenue = '$8,000-$20,000';
+    
+    if (/chick.?fil.?a|in.?n.?out|raising.?cane|whataburger/i.test(text)) {
+        revenue = '$50,000-$100,000';
+    } else if (/costco|walmart|target|whole\s+foods|kroger/i.test(text)) {
+        revenue = '$60,000-$150,000';
+    } else if (/shopping\s+center|mall|plaza.*development/i.test(text)) {
+        revenue = '$35,000-$80,000';
+    } else if (/starbucks|chipotle|panera|five\s+guys|shake\s+shack|dutch\s+bros/i.test(text)) {
+        revenue = '$20,000-$45,000';
+    } else if (/drive.?thru|fast.?food/i.test(text)) {
         revenue = '$15,000-$35,000';
+    } else if (/hotel|resort/i.test(text)) {
+        revenue = '$25,000-$60,000';
     } else if (/franchise|chain/i.test(text)) {
         revenue = '$12,000-$30,000';
     }
@@ -350,15 +415,36 @@ function enrichLead(result, state, queryType) {
 async function scrapeState(state) {
     logger.info(`\n🔍 ${state.toUpperCase()}`);
     const allResults = [];
-    const allQueries = [
-        ...CONFIG.KEYWORDS.map(k => `${k} ${state}`),
-        ...CONFIG.FRANCHISE_CHAINS.map(f => `${f} ${state}`)
-    ];
     
-    for (const query of allQueries) {
+    // PHASE 1: Search priority news domains first
+    logger.info(`  Phase 1: Searching priority news sites...`);
+    for (const domain of CONFIG.PRIORITY_DOMAINS.slice(0, 5)) { // Top 5 domains per state
+        for (const keyword of CONFIG.KEYWORDS.slice(0, 3)) { // Top 3 keywords
+            const query = `site:${domain} ${keyword} ${state}`;
+            const results = await searchBing(query);
+            allResults.push(...results);
+            await delay(Math.random() * 1000 + 800);
+        }
+    }
+    
+    // PHASE 2: Search top franchise chains
+    logger.info(`  Phase 2: Searching franchise chains...`);
+    for (const franchise of CONFIG.FRANCHISE_CHAINS.slice(0, 8)) {
+        const query = `${franchise} ${state}`;
         const results = await searchBing(query);
         allResults.push(...results);
         await delay(Math.random() * (CONFIG.RATE_LIMIT.maxDelay - CONFIG.RATE_LIMIT.minDelay) + CONFIG.RATE_LIMIT.minDelay);
+    }
+    
+    // PHASE 3: General keyword search (if needed)
+    if (allResults.length < 30) {
+        logger.info(`  Phase 3: General search...`);
+        for (const keyword of CONFIG.KEYWORDS.slice(3, 6)) {
+            const query = `${keyword} ${state}`;
+            const results = await searchBing(query);
+            allResults.push(...results);
+            await delay(Math.random() * (CONFIG.RATE_LIMIT.maxDelay - CONFIG.RATE_LIMIT.minDelay) + CONFIG.RATE_LIMIT.minDelay);
+        }
     }
     
     // Deduplicate by URL
@@ -374,7 +460,7 @@ async function scrapeState(state) {
         .map(r => enrichLead(r, state, 'bing'))
         .filter(lead => lead !== null); // Remove filtered-out results
     
-    logger.success(`${state}: ${leads.length} unique leads (from ${unique.length} results)`);
+    logger.success(`${state}: ${leads.length} qualified leads (from ${unique.length} results)`);
     return leads;
 }
 
