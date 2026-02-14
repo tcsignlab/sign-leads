@@ -145,31 +145,6 @@
   .tt-status.coming { color:var(--muted); }
   .tt-click { font-size:0.7rem; color:#4a90e2; margin-top:6px; }
 
-  /* ─── MODAL ─── */
-  #modal-overlay {
-    position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(6px);
-    z-index:2000; display:none; align-items:center; justify-content:center;
-  }
-  #modal-overlay.visible { display:flex; }
-  .modal {
-    background:var(--panel); border:1px solid var(--border); border-radius:16px;
-    padding:40px; max-width:460px; width:90%; text-align:center; position:relative;
-    box-shadow:0 40px 100px rgba(0,0,0,0.8);
-  }
-  .modal-icon { font-size:3rem; margin-bottom:16px; }
-  .modal-title { font-family:'Bebas Neue',sans-serif; font-size:2rem; letter-spacing:3px; color:var(--accent); margin-bottom:8px; }
-  .modal-state { font-family:'Bebas Neue',sans-serif; font-size:1.2rem; letter-spacing:2px; color:var(--muted); margin-bottom:16px; }
-  .modal p { font-size:0.9rem; color:#a0aec0; line-height:1.7; margin-bottom:24px; }
-  .modal-btn {
-    background:linear-gradient(135deg,var(--accent),#a00820); color:white; border:none;
-    padding:14px 32px; border-radius:8px; font-weight:800; font-size:0.9rem; cursor:pointer;
-    letter-spacing:1px; text-transform:uppercase; transition:all 0.2s; margin:6px; display:inline-block;
-  }
-  .modal-btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px var(--glow); }
-  .modal-btn.secondary { background:transparent; border:1px solid var(--border); color:var(--muted); }
-  .modal-close { position:absolute; top:16px; right:16px; background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer; }
-  .modal-close:hover { color:var(--text); }
-
   /* Sync bar */
   .sync-bar {
     width:100%; max-width:880px; display:flex; align-items:center; justify-content:space-between;
@@ -184,32 +159,24 @@
   /* Loading state */
   .loading-map {
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    padding:80px; color:var(--muted); gap:16px;
+    padding:80px 20px; text-align:center; color:var(--muted);
   }
-  .loading-map .spin-big { width:48px; height:48px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; }
-
-  /* Quick stats */
-  .qstat-row {
-    display:flex; justify-content:space-between; border-bottom:1px solid var(--border);
-    padding:8px 0; font-size:0.82rem; color:#a0aec0; line-height:2;
+  .loading-map .spinner {
+    width:40px; height:40px; margin-bottom:20px;
+    border:3px solid rgba(232,41,28,0.2); border-top-color:var(--accent);
+    border-radius:50%; animation:spin 1s linear infinite;
   }
-  .qstat-row:last-child { border-bottom:none; }
 
-  /* Next run countdown */
-  .next-run-box {
-    margin-top:20px; padding:12px; background:rgba(232,41,28,0.06);
-    border:1px solid rgba(232,41,28,0.2); border-radius:8px; text-align:center;
+  @media (max-width: 1024px) {
+    .main { grid-template-columns: 1fr; }
+    .side-panel { border:none; border-bottom:1px solid var(--border); }
+    .side-panel.right { border-top:1px solid var(--border); border-bottom:none; }
+    .header-stats { gap:20px; }
+    .hstat-val { font-size:1.6rem; }
   }
-  .next-run-label { font-size:0.65rem; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:4px; }
-  .next-run-val { font-family:'Bebas Neue',sans-serif; font-size:1.3rem; color:var(--accent); letter-spacing:1px; }
-
-  @media (max-width:900px) {
-    .main { grid-template-columns:1fr; }
-    .side-panel { display:none; }
-    header { padding:12px 16px; }
-    .header-stats { gap:16px; }
-    .hstat-val { font-size:1.4rem; }
-    .map-area { padding:16px; }
+  @media (max-width: 640px) {
+    header { flex-direction:column; gap:16px; }
+    .header-stats { width:100%; justify-content:space-around; }
   }
 </style>
 </head>
@@ -217,254 +184,253 @@
 
 <header>
   <div class="logo">
-    <div class="logo-icon">🗺️</div>
+    <div class="logo-icon">🎯</div>
     <div>
-      <div class="logo-text">Sign Leads USA</div>
-      <div class="logo-sub">National Intelligence Map</div>
+      <div class="logo-text">SIGN LEADS</div>
+      <div class="logo-sub">USA Intelligence</div>
     </div>
   </div>
   <div class="header-stats">
-    <div class="hstat"><div class="hstat-val" id="stat-total-leads">—</div><div class="hstat-label">Total Leads</div></div>
-    <div class="hstat"><div class="hstat-val" id="stat-active-states">—</div><div class="hstat-label">Active States</div></div>
-    <div class="hstat"><div class="hstat-val" id="stat-revenue">—</div><div class="hstat-label">Est. Revenue</div></div>
+    <div class="hstat">
+      <div class="hstat-val" id="stat-total-leads">—</div>
+      <div class="hstat-label">Total Leads</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val" id="stat-active-states">—</div>
+      <div class="hstat-label">Active States</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val" id="stat-revenue">—</div>
+      <div class="hstat-label">Est. Revenue</div>
+    </div>
   </div>
-  <div class="live-badge"><div class="live-dot"></div>LIVE DATA</div>
+  <div class="live-badge">
+    <div class="live-dot"></div>
+    LIVE DATA
+  </div>
 </header>
 
 <div class="main">
+  <!-- LEFT PANEL: Legend -->
+  <aside class="side-panel">
+    <div class="panel-title">Heat Map Legend</div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:var(--heat-500)"></div>
+      <div class="legend-label">500+ Leads</div>
+      <div class="legend-count" id="leg-500">—</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:var(--heat-200)"></div>
+      <div class="legend-label">200–499</div>
+      <div class="legend-count" id="leg-200">—</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:var(--heat-50)"></div>
+      <div class="legend-label">50–199</div>
+      <div class="legend-count" id="leg-50">—</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:var(--heat-1)"></div>
+      <div class="legend-label">1–49</div>
+      <div class="legend-count" id="leg-1">—</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:var(--heat-0)"></div>
+      <div class="legend-label">No Data Yet</div>
+      <div class="legend-count" id="leg-0">—</div>
+    </div>
 
-  <!-- LEFT PANEL -->
-  <div class="side-panel">
-    <div class="panel-title">HEAT MAP LEGEND</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#e8291c;box-shadow:0 0 8px rgba(232,41,28,0.5)"></div><div class="legend-label">500+ Leads</div><div class="legend-count" id="leg-500">0 states</div></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#6d28d9;box-shadow:0 0 8px rgba(109,40,217,0.5)"></div><div class="legend-label">200–499 Leads</div><div class="legend-count" id="leg-200">0 states</div></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#1a3a6e"></div><div class="legend-label">50–199 Leads</div><div class="legend-count" id="leg-50">0 states</div></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#2d3748"></div><div class="legend-label">1–49 Leads</div><div class="legend-count" id="leg-1">0 states</div></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#1a1f2e;border:1px solid #2d3748"></div><div class="legend-label">Not Yet Scraped</div><div class="legend-count" id="leg-0">0 states</div></div>
+    <div class="panel-title" style="margin-top:28px">Quick Stats</div>
+    <div style="font-size:0.78rem;color:#a0aec0;line-height:1.6">
+      <div style="display:flex;justify-content:space-between;margin:6px 0">
+        <span>Pages Online:</span>
+        <strong style="color:var(--text)" id="qs-online">—</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin:6px 0">
+        <span>🔥 Hot Leads:</span>
+        <strong style="color:var(--accent)" id="qs-hot">—</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin:6px 0">
+        <span>⚡ Warm Leads:</span>
+        <strong style="color:#ffa500" id="qs-warm">—</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin:6px 0">
+        <span>Next Update:</span>
+        <strong style="color:#10b981" id="next-run-val">—</strong>
+      </div>
+    </div>
+  </aside>
 
-    <div class="panel-title" style="margin-top:28px">TOP STATES <span style="font-size:0.75rem;color:var(--accent);font-weight:900;margin-left:8px" id="top-states-total">0 total</span></div>
-    <div id="top-states-list"></div>
-  </div>
-
-  <!-- MAP CENTER -->
-  <div class="map-area">
+  <!-- CENTER: Map -->
+  <main class="map-area">
     <div class="map-title-row">
-      <h2>SELECT YOUR STATE</h2>
-      <p>Click any state to access its sign lead database</p>
+      <h2>NATIONAL INTELLIGENCE MAP</h2>
+      <p>Click any state to view detailed leads</p>
     </div>
     <div id="map-container">
       <div class="loading-map">
-        <div class="spin-big"></div>
-        <span>Loading US map…</span>
+        <div class="spinner"></div>
+        <div>Loading national map...</div>
       </div>
-      <svg id="usmap" viewBox="0 0 960 600" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;filter:drop-shadow(0 20px 60px rgba(0,0,0,0.6));display:none">
-        <g id="states-group"></g>
-        <g id="labels-group" pointer-events="none"></g>
-      </svg>
+      <svg id="usmap" width="880" height="520" style="display:none"></svg>
     </div>
     <div class="sync-bar">
-      <span><div class="sync-spinner"></div> <span id="sync-label">Loading scrape data…</span></span>
-      <span id="last-updated">Last updated: —</span>
-      <span id="sync-status" style="color:#10b981">✓ Live</span>
+      <span><div class="sync-spinner"></div> Live sync with Bing scraper</span>
+      <span>Data sourced via Bing Search API</span>
     </div>
-  </div>
+  </main>
 
-  <!-- RIGHT PANEL -->
-  <div class="side-panel right">
-    <div class="panel-title">RECENT ACTIVITY</div>
+  <!-- RIGHT PANEL: Top States + Activity -->
+  <aside class="side-panel right">
+    <div class="panel-title">Top 10 States <span style="float:right;font-size:0.7rem;color:var(--muted)" id="top-states-total">—</span></div>
+    <div id="top-states-list"></div>
+
+    <div class="panel-title" style="margin-top:28px">Recent Activity</div>
     <div id="activity-feed"></div>
-
-    <div class="panel-title" style="margin-top:28px">QUICK STATS</div>
-    <div class="qstat-row"><span>States Online</span><span id="qs-online" style="color:#10b981;font-weight:700">—</span></div>
-    <div class="qstat-row"><span>Hot Leads 🔥</span><span id="qs-hot" style="color:var(--accent);font-weight:700">—</span></div>
-    <div class="qstat-row"><span>Warm Leads ⚡</span><span id="qs-warm" style="color:#f59e0b;font-weight:700">—</span></div>
-    <div class="qstat-row"><span>Scrape Cycle</span><span style="color:var(--muted);font-weight:700">96 hrs</span></div>
-
-    <div class="next-run-box">
-      <div class="next-run-label">Next Scrape Run</div>
-      <div class="next-run-val" id="next-run-val">—</div>
-    </div>
-  </div>
+  </aside>
 </div>
 
-<!-- TOOLTIP -->
 <div id="tooltip">
-  <div class="tt-state" id="tt-state">Texas</div>
-  <div class="tt-leads" id="tt-leads">0</div>
-  <div class="tt-sub">Sign Leads</div>
-  <div class="tt-hot-warm" id="tt-hot-warm"></div>
-  <div class="tt-status active" id="tt-status">● Active Database</div>
-  <div class="tt-click" id="tt-click">Click to access leads →</div>
+  <div class="tt-state">STATE NAME</div>
+  <div class="tt-leads">0</div>
+  <div class="tt-sub">sign opportunities</div>
+  <div class="tt-hot-warm">—</div>
+  <div class="tt-status">—</div>
+  <div class="tt-click">Click to view details →</div>
 </div>
 
-<!-- MODAL — shown for states with no page yet -->
-<div id="modal-overlay">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal()">✕</button>
-    <div class="modal-icon">⏳</div>
-    <div class="modal-title">NOT YET SCRAPED</div>
-    <div class="modal-state" id="modal-state-name">— STATE —</div>
-    <p>This state's lead database hasn't been generated yet. The scraper runs every 96 hours and is working through all 50 states. Check back after the next run.</p>
-    <button class="modal-btn secondary" onclick="closeModal()">Close</button>
-  </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
-
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://d3js.org/topojson.v3.min.js"></script>
 <script>
+'use strict';
+
 // ═══════════════════════════════════════════════
-// ALL 50 STATE PAGES — matches scraper output filenames
+// STATE PAGES MAPPING - Updated for new scraper format
 // ═══════════════════════════════════════════════
 const STATE_PAGES = {
-  AL:'state-pages/alabama-sign-leads.html',
-  AK:'state-pages/alaska-sign-leads.html',
-  AZ:'state-pages/arizona-sign-leads.html',
-  AR:'state-pages/arkansas-sign-leads.html',
-  CA:'state-pages/california-sign-leads.html',
-  CO:'state-pages/colorado-sign-leads.html',
-  CT:'state-pages/connecticut-sign-leads.html',
-  DE:'state-pages/delaware-sign-leads.html',
-  FL:'state-pages/florida-sign-leads.html',
-  GA:'state-pages/georgia-sign-leads.html',
-  HI:'state-pages/hawaii-sign-leads.html',
-  ID:'state-pages/idaho-sign-leads.html',
-  IL:'state-pages/illinois-sign-leads.html',
-  IN:'state-pages/indiana-sign-leads.html',
-  IA:'state-pages/iowa-sign-leads.html',
-  KS:'state-pages/kansas-sign-leads.html',
-  KY:'state-pages/kentucky-sign-leads.html',
-  LA:'state-pages/louisiana-sign-leads.html',
-  ME:'state-pages/maine-sign-leads.html',
-  MD:'state-pages/maryland-sign-leads.html',
-  MA:'state-pages/massachusetts-sign-leads.html',
-  MI:'state-pages/michigan-sign-leads.html',
-  MN:'state-pages/minnesota-sign-leads.html',
-  MS:'state-pages/mississippi-sign-leads.html',
-  MO:'state-pages/missouri-sign-leads.html',
-  MT:'state-pages/montana-sign-leads.html',
-  NE:'state-pages/nebraska-sign-leads.html',
-  NV:'state-pages/nevada-sign-leads.html',
-  NH:'state-pages/new-hampshire-sign-leads.html',
-  NJ:'state-pages/new-jersey-sign-leads.html',
-  NM:'state-pages/new-mexico-sign-leads.html',
-  NY:'state-pages/new-york-sign-leads.html',
-  NC:'state-pages/north-carolina-sign-leads.html',
-  ND:'state-pages/north-dakota-sign-leads.html',
-  OH:'state-pages/ohio-sign-leads.html',
-  OK:'state-pages/oklahoma-sign-leads.html',
-  OR:'state-pages/oregon-sign-leads.html',
-  PA:'state-pages/pennsylvania-sign-leads.html',
-  RI:'state-pages/rhode-island-sign-leads.html',
-  SC:'state-pages/south-carolina-sign-leads.html',
-  SD:'state-pages/south-dakota-sign-leads.html',
-  TN:'state-pages/tennessee-sign-leads.html',
-  TX:'state-pages/texas-sign-leads.html',
-  UT:'state-pages/utah-sign-leads.html',
-  VT:'state-pages/vermont-sign-leads.html',
-  VA:'state-pages/virginia-sign-leads.html',
-  WA:'state-pages/washington-sign-leads.html',
-  WV:'state-pages/west-virginia-sign-leads.html',
-  WI:'state-pages/wisconsin-sign-leads.html',
-  WY:'state-pages/wyoming-sign-leads.html'
+  'AL': 'state-pages/alabama-sign-leads.html',
+  'AK': 'state-pages/alaska-sign-leads.html',
+  'AZ': 'state-pages/arizona-sign-leads.html',
+  'AR': 'state-pages/arkansas-sign-leads.html',
+  'CA': 'state-pages/california-sign-leads.html',
+  'CO': 'state-pages/colorado-sign-leads.html',
+  'CT': 'state-pages/connecticut-sign-leads.html',
+  'DE': 'state-pages/delaware-sign-leads.html',
+  'FL': 'state-pages/florida-sign-leads.html',
+  'GA': 'state-pages/georgia-sign-leads.html',
+  'HI': 'state-pages/hawaii-sign-leads.html',
+  'ID': 'state-pages/idaho-sign-leads.html',
+  'IL': 'state-pages/illinois-sign-leads.html',
+  'IN': 'state-pages/indiana-sign-leads.html',
+  'IA': 'state-pages/iowa-sign-leads.html',
+  'KS': 'state-pages/kansas-sign-leads.html',
+  'KY': 'state-pages/kentucky-sign-leads.html',
+  'LA': 'state-pages/louisiana-sign-leads.html',
+  'ME': 'state-pages/maine-sign-leads.html',
+  'MD': 'state-pages/maryland-sign-leads.html',
+  'MA': 'state-pages/massachusetts-sign-leads.html',
+  'MI': 'state-pages/michigan-sign-leads.html',
+  'MN': 'state-pages/minnesota-sign-leads.html',
+  'MS': 'state-pages/mississippi-sign-leads.html',
+  'MO': 'state-pages/missouri-sign-leads.html',
+  'MT': 'state-pages/montana-sign-leads.html',
+  'NE': 'state-pages/nebraska-sign-leads.html',
+  'NV': 'state-pages/nevada-sign-leads.html',
+  'NH': 'state-pages/new-hampshire-sign-leads.html',
+  'NJ': 'state-pages/new-jersey-sign-leads.html',
+  'NM': 'state-pages/new-mexico-sign-leads.html',
+  'NY': 'state-pages/new-york-sign-leads.html',
+  'NC': 'state-pages/north-carolina-sign-leads.html',
+  'ND': 'state-pages/north-dakota-sign-leads.html',
+  'OH': 'state-pages/ohio-sign-leads.html',
+  'OK': 'state-pages/oklahoma-sign-leads.html',
+  'OR': 'state-pages/oregon-sign-leads.html',
+  'PA': 'state-pages/pennsylvania-sign-leads.html',
+  'RI': 'state-pages/rhode-island-sign-leads.html',
+  'SC': 'state-pages/south-carolina-sign-leads.html',
+  'SD': 'state-pages/south-dakota-sign-leads.html',
+  'TN': 'state-pages/tennessee-sign-leads.html',
+  'TX': 'state-pages/texas-sign-leads.html',
+  'UT': 'state-pages/utah-sign-leads.html',
+  'VT': 'state-pages/vermont-sign-leads.html',
+  'VA': 'state-pages/virginia-sign-leads.html',
+  'WA': 'state-pages/washington-sign-leads.html',
+  'WV': 'state-pages/west-virginia-sign-leads.html',
+  'WI': 'state-pages/wisconsin-sign-leads.html',
+  'WY': 'state-pages/wyoming-sign-leads.html'
 };
 
 const STATE_NAMES = {
-  AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',
-  CO:'Colorado',CT:'Connecticut',DE:'Delaware',FL:'Florida',GA:'Georgia',
-  HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',
-  KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',
-  MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',
-  NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',
-  NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',
-  OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',
-  SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',
-  VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming'
+  'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California','CO':'Colorado',
+  'CT':'Connecticut','DE':'Delaware','FL':'Florida','GA':'Georgia','HI':'Hawaii','ID':'Idaho',
+  'IL':'Illinois','IN':'Indiana','IA':'Iowa','KS':'Kansas','KY':'Kentucky','LA':'Louisiana',
+  'ME':'Maine','MD':'Maryland','MA':'Massachusetts','MI':'Michigan','MN':'Minnesota','MS':'Mississippi',
+  'MO':'Missouri','MT':'Montana','NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey',
+  'NM':'New Mexico','NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio','OK':'Oklahoma',
+  'OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina','SD':'South Dakota',
+  'TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia','WA':'Washington',
+  'WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming'
 };
 
 const FIPS_TO_ABBR = {
-  "01":"AL","02":"AK","04":"AZ","05":"AR","06":"CA","08":"CO","09":"CT","10":"DE",
-  "12":"FL","13":"GA","15":"HI","16":"ID","17":"IL","18":"IN","19":"IA","20":"KS",
-  "21":"KY","22":"LA","23":"ME","24":"MD","25":"MA","26":"MI","27":"MN","28":"MS",
-  "29":"MO","30":"MT","31":"NE","32":"NV","33":"NH","34":"NJ","35":"NM","36":"NY",
-  "37":"NC","38":"ND","39":"OH","40":"OK","41":"OR","42":"PA","44":"RI","45":"SC",
-  "46":"SD","47":"TN","48":"TX","49":"UT","50":"VT","51":"VA","53":"WA","54":"WV",
-  "55":"WI","56":"WY"
+  '01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT','10':'DE','12':'FL','13':'GA',
+  '15':'HI','16':'ID','17':'IL','18':'IN','19':'IA','20':'KS','21':'KY','22':'LA','23':'ME','24':'MD',
+  '25':'MA','26':'MI','27':'MN','28':'MS','29':'MO','30':'MT','31':'NE','32':'NV','33':'NH','34':'NJ',
+  '35':'NM','36':'NY','37':'NC','38':'ND','39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC',
+  '46':'SD','47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV','55':'WI','56':'WY'
 };
 
-// Live state data — populated from scrape-summary.json
+// ═══════════════════════════════════════════════
+// GLOBAL STATE
+// ═══════════════════════════════════════════════
 let stateData = {};
-let availablePages = new Set(); // states whose HTML pages actually exist
-let mapBuilt = false;
-let lastScrapeTime = null;
+let availablePages = new Set();
 let nextRunTime = null;
+let lastScrapeTime = null;
+let mapBuilt = false;
 
 // ═══════════════════════════════════════════════
-// LOAD LIVE DATA FROM SCRAPE-SUMMARY.JSON
-// Falls back gracefully if file doesn't exist yet
+// DATA LOADING
 // ═══════════════════════════════════════════════
 async function loadScrapeData() {
   try {
-    const res = await fetch('state-pages/scrape-summary.json?t=' + Date.now());
-    if (!res.ok) throw new Error('No summary file');
+    const res = await fetch('state-pages/scrape-summary.json');
+    if (!res.ok) throw new Error('Summary not found');
+    
     const summary = await res.json();
-
-    // Populate stateData from breakdown
-    stateData = {};
+    
+    // Parse summary data
     if (summary.stateBreakdown) {
-      summary.stateBreakdown.forEach(entry => {
-        if (entry.leadCount > 0) {
-          stateData[entry.stateCode] = {
-            leads: entry.leadCount,
-            hot: entry.hotLeads || 0,
-            warm: entry.warmLeads || 0
-          };
-        }
+      summary.stateBreakdown.forEach(s => {
+        stateData[s.stateCode] = {
+          leads: s.leadCount || 0,
+          hot: s.hotLeads || 0,
+          warm: s.warmLeads || 0
+        };
+        if (s.leadCount > 0) availablePages.add(s.stateCode);
       });
     }
-
-    lastScrapeTime = summary.timestamp ? new Date(summary.timestamp) : null;
-    nextRunTime    = summary.nextRun   ? new Date(summary.nextRun)   : null;
-
-    // Update sync bar
-    if (lastScrapeTime) {
-      document.getElementById('last-updated').textContent = 'Scraped: ' + lastScrapeTime.toLocaleString();
+    
+    if (summary.nextRun) {
+      nextRunTime = new Date(summary.nextRun).getTime();
     }
-    document.getElementById('sync-label').textContent = 'Data loaded from scrape-summary.json';
-    document.getElementById('sync-status').textContent = '✓ Live';
-
-    // Check which state pages actually exist (HEAD requests)
-    await checkAvailablePages();
-
-    if (mapBuilt) applyHeatMap();
+    if (summary.timestamp) {
+      lastScrapeTime = new Date(summary.timestamp).getTime();
+    }
+    
     updateStats(summary);
     updateSidePanels(summary);
-
-  } catch (err) {
-    // No summary yet — show empty map, waiting for first scrape
-    document.getElementById('sync-label').textContent = 'Awaiting first scrape run…';
-    document.getElementById('sync-status').textContent = '⏳ Pending';
-    document.getElementById('last-updated').textContent = 'No data yet';
-    if (mapBuilt) applyHeatMap();
-    updateStats(null);
-    updateSidePanels(null);
+    applyHeatMap();
+    
+  } catch(err) {
+    console.warn('Could not load summary:', err);
+    // Show all state links even without data
+    Object.keys(STATE_PAGES).forEach(abbr => availablePages.add(abbr));
   }
 }
 
-// Check which state HTML pages actually exist (so clicks go to real pages)
-async function checkAvailablePages() {
-  availablePages.clear();
-  const checks = Object.entries(STATE_PAGES).map(async ([abbr, url]) => {
-    try {
-      const r = await fetch(url, { method: 'HEAD' });
-      if (r.ok) availablePages.add(abbr);
-    } catch (e) { /* page doesn't exist */ }
-  });
-  await Promise.allSettled(checks);
-}
-
 // ═══════════════════════════════════════════════
-// HEAT TIER
+// HEAT MAP TIERS
 // ═══════════════════════════════════════════════
 function getTier(leads) {
   if (leads >= 500) return '500';
@@ -475,80 +441,63 @@ function getTier(leads) {
 }
 
 // ═══════════════════════════════════════════════
-// BUILD MAP
+// BUILD D3 MAP
 // ═══════════════════════════════════════════════
 async function buildMap() {
-  const us = await d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json');
+  const svg = d3.select('#usmap');
+  const width = +svg.attr('width');
+  const height = +svg.attr('height');
 
-  const width = 960, height = 600;
-  const projection = d3.geoAlbersUsa().scale(1300).translate([width/2, height/2]);
+  const projection = d3.geoAlbersUsa().scale(1000).translate([width/2, height/2]);
   const path = d3.geoPath().projection(projection);
 
-  const states  = topojson.feature(us, us.objects.states);
-  const borders = topojson.mesh(us, us.objects.states, (a,b) => a !== b);
+  const us = await d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json');
+  const states = topojson.feature(us, us.objects.states);
 
-  const g      = d3.select('#states-group');
-  const labels = d3.select('#labels-group');
+  const tiny = ['RI','DE','CT','NJ','MD','MA','NH','VT'];
 
-  g.selectAll('path.state-path')
+  // Draw states
+  svg.selectAll('.state-path')
     .data(states.features)
     .enter()
     .append('path')
     .attr('class', 'state-path tier-0')
     .attr('d', path)
-    .attr('data-fips', d => d.id)
     .attr('data-state', d => FIPS_TO_ABBR[String(d.id).padStart(2,'0')] || '')
     .on('mouseenter', function(event, d) {
-      const abbr = FIPS_TO_ABBR[String(d.id).padStart(2,'0')] || '';
-      const info = stateData[abbr] || { leads:0, hot:0, warm:0 };
-      const hasPage = availablePages.has(abbr);
-
-      document.getElementById('tt-state').textContent = (STATE_NAMES[abbr] || abbr).toUpperCase();
-      document.getElementById('tt-leads').textContent = info.leads > 0 ? info.leads.toLocaleString() : '0';
-
-      const hotWarm = document.getElementById('tt-hot-warm');
-      if (info.leads > 0) {
-        hotWarm.textContent = `🔥 ${info.hot || 0} hot  ⚡ ${info.warm || 0} warm`;
+      const abbr = FIPS_TO_ABBR[String(d.id).padStart(2,'0')];
+      if (!abbr) return;
+      
+      const data = stateData[abbr] || { leads:0, hot:0, warm:0 };
+      const tip = document.getElementById('tooltip');
+      
+      tip.querySelector('.tt-state').textContent = STATE_NAMES[abbr] || abbr;
+      tip.querySelector('.tt-leads').textContent = data.leads || 0;
+      tip.querySelector('.tt-hot-warm').textContent = `🔥 ${data.hot||0} hot  •  ⚡ ${data.warm||0} warm`;
+      
+      const statusEl = tip.querySelector('.tt-status');
+      if (availablePages.has(abbr)) {
+        statusEl.textContent = '✅ PAGE LIVE';
+        statusEl.className = 'tt-status active';
       } else {
-        hotWarm.textContent = '';
+        statusEl.textContent = 'Coming Soon';
+        statusEl.className = 'tt-status coming';
       }
-
-      const statusEl = document.getElementById('tt-status');
-      const clickEl  = document.getElementById('tt-click');
-      if (hasPage && info.leads > 0) {
-        statusEl.textContent = '● Active Database';
-        statusEl.className   = 'tt-status active';
-        clickEl.textContent  = 'Click to access leads →';
-      } else if (hasPage) {
-        statusEl.textContent = '● Page Online';
-        statusEl.className   = 'tt-status active';
-        clickEl.textContent  = 'Click to open →';
-      } else {
-        statusEl.textContent = '◌ Not Yet Scraped';
-        statusEl.className   = 'tt-status coming';
-        clickEl.textContent  = 'Check back after next run';
-      }
-
-      document.getElementById('tooltip').classList.add('visible');
+      
+      tip.classList.add('visible');
       moveTooltip(event);
     })
-    .on('mousemove', function(event) { moveTooltip(event); })
-    .on('mouseleave', function() { document.getElementById('tooltip').classList.remove('visible'); })
+    .on('mousemove', moveTooltip)
+    .on('mouseleave', () => {
+      document.getElementById('tooltip').classList.remove('visible');
+    })
     .on('click', function(event, d) {
-      const abbr = FIPS_TO_ABBR[String(d.id).padStart(2,'0')] || '';
+      const abbr = FIPS_TO_ABBR[String(d.id).padStart(2,'0')];
       handleStateClick(abbr);
     });
 
-  g.append('path')
-    .datum(borders)
-    .attr('fill', 'none')
-    .attr('stroke', '#0d1017')
-    .attr('stroke-width', 0.5)
-    .attr('d', path)
-    .attr('pointer-events', 'none');
-
-  const tiny = ['CT','DE','RI','NJ','NH','VT','MA','MD','DC'];
-  labels.selectAll('text')
+  // Add state labels
+  svg.selectAll('.state-label')
     .data(states.features)
     .enter()
     .append('text')
@@ -650,8 +599,8 @@ function updateSidePanels(summary) {
 
   const staticItems = [
     { color:'#4a90e2', text:'Scraper cycle: every 96 hours', time:'schedule' },
-    { color:'#f59e0b', text:'AI scoring: disabled (free mode)', time:'config' },
-    { color:'#6b7280', text:'Data from Google Custom Search', time:'source' },
+    { color:'#f59e0b', text:'Engine: Bing Search (free)', time:'config' },
+    { color:'#6b7280', text:'All 50 states available', time:'source' },
   ];
 
   const items = [...recentStates, ...staticItems].slice(0, 8);
@@ -681,22 +630,13 @@ function moveTooltip(event) {
 }
 
 // ═══════════════════════════════════════════════
-// CLICK HANDLER
+// CLICK HANDLER - All states now clickable
 // ═══════════════════════════════════════════════
 function handleStateClick(abbr) {
-  if (!abbr) return;
-  if (availablePages.has(abbr)) {
-    window.location.href = STATE_PAGES[abbr];
-  } else {
-    document.getElementById('modal-state-name').textContent = '— ' + (STATE_NAMES[abbr] || abbr).toUpperCase() + ' —';
-    document.getElementById('modal-overlay').classList.add('visible');
-  }
+  if (!abbr || !STATE_PAGES[abbr]) return;
+  // Navigate to state page - all 50 states are now available
+  window.location.href = STATE_PAGES[abbr];
 }
-
-function closeModal() { document.getElementById('modal-overlay').classList.remove('visible'); }
-document.getElementById('modal-overlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('modal-overlay')) closeModal();
-});
 
 // ═══════════════════════════════════════════════
 // COUNTDOWN TICK
