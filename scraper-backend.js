@@ -175,6 +175,15 @@ function parseBingResults(html) {
     const results = [];
     const blocks  = html.split('<li class="b_algo"');
 
+    // Blacklist of domains to exclude
+    const blacklist = [
+        'dictionary.com', 'merriam-webster.com', 'wikipedia.org', 'wiktionary.org',
+        'urbandictionary.com', 'thesaurus.com', 'definitions.net', 'yourdictionary.com',
+        'reddit.com', 'facebook.com', 'twitter.com', 'pinterest.com', 'instagram.com',
+        'youtube.com', 'tiktok.com', 'linkedin.com/posts', 'amazon.com', 'ebay.com',
+        'yelp.com/search', 'tripadvisor.com', 'booking.com', 'expedia.com'
+    ];
+
     for (const block of blocks.slice(1)) {
         try {
             const linkMatch = block.match(/<h2[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>(.*?)<\/a>/s);
@@ -184,6 +193,17 @@ function parseBingResults(html) {
             let title = linkMatch[2].replace(/<[^>]+>/g, '').trim();
             title     = decodeEntities(title);
 
+            // Skip blacklisted domains
+            const urlLower = url.toLowerCase();
+            if (blacklist.some(domain => urlLower.includes(domain))) {
+                continue;
+            }
+
+            // Skip if title looks like a definition
+            if (/definition|meaning|what does|what is|define|synonym/i.test(title)) {
+                continue;
+            }
+
             // Extract snippet
             const snippetMatch = block.match(/<p[^>]*>(.*?)<\/p>/s);
             let snippet = '';
@@ -191,6 +211,9 @@ function parseBingResults(html) {
                 snippet = snippetMatch[1].replace(/<[^>]+>/g, '').trim();
                 snippet = decodeEntities(snippet);
             }
+
+            // Must have both title and snippet
+            if (!snippet || snippet.length < 20) continue;
 
             results.push({ title, url, snippet });
         } catch(e) {
@@ -234,49 +257,88 @@ async function searchBing(query, retries = 0) {
 function enrichLead(result, state, queryType) {
     const text = (result.title + ' ' + result.snippet).toLowerCase();
     
-    // Extract business name
-    let name = result.title.split('-')[0].split('|')[0].trim();
-    name = name.replace(/\s+(opening|opens|now open|coming soon|grand opening).*/i, '').trim();
+    // QUALITY FILTERS - Skip if result doesn't look like a real business lead
+    const hasBusinessIndicators = 
+        /restaurant|store|retail|shop|cafe|coffee|franchise|business|location|construction|development|opening|permit/i.test(text);
     
-    // Extract location
+    const hasLocationIndicators = 
+        /street|avenue|road|blvd|boulevard|plaza|center|mall|district|downtown|city|county/i.test(text);
+    
+    // Must have at least business context
+    if (!hasBusinessIndicators) {
+        return null; // Skip this result
+    }
+    
+    // Extract business name - more careful extraction
+    let name = result.title.split(/[-–—|]/)[0].trim();
+    name = name.replace(/\s+(opening|opens|now open|coming soon|grand opening|new location).*/i, '').trim();
+    
+    // Skip if name is too generic or looks like an article title
+    if (name.length < 3 || /^(new|now|grand|opening|coming|see|view|what|how|the\s)/i.test(name)) {
+        name = result.title.substring(0, 50).trim();
+    }
+    
+    // Extract location with better accuracy
     let location = state;
-    const cityMatch = result.snippet.match(/in ([A-Z][a-z]+(?:\s[A-Z][a-z]+)*),?\s/);
-    if (cityMatch) location = `${cityMatch[1]}, ${CONFIG.STATE_CODES[state]}`;
+    const cityMatch = result.snippet.match(/in\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)*),?\s+(FL|CA|TX|NY|[A-Z]{2})/i);
+    if (cityMatch) {
+        location = `${cityMatch[1]}, ${cityMatch[2].toUpperCase()}`;
+    } else {
+        // Try to find city name in title
+        const titleCityMatch = result.title.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)*),?\s+(FL|CA|TX|NY|[A-Z]{2})/i);
+        if (titleCityMatch) {
+            location = `${titleCityMatch[1]}, ${titleCityMatch[2].toUpperCase()}`;
+        }
+    }
     
-    // Temperature scoring
-    const hotKeywords = ['grand opening', 'now open', 'just opened', 'construction permit', 'breaking ground'];
-    const warmKeywords = ['coming soon', 'opening soon', 'planned', 'announced', 'will open'];
+    // Temperature scoring - more accurate
+    const hotKeywords = ['grand opening', 'now open', 'just opened', 'opened today', 'construction permit issued', 'breaking ground'];
+    const warmKeywords = ['coming soon', 'opening soon', 'planned', 'announced', 'will open', 'under construction'];
     const isHot = hotKeywords.some(k => text.includes(k));
     const temp = isHot ? 'hot' : 'warm';
     
     // Opening timeline
     let opening = 'TBA';
     const monthMatch = text.match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}/i);
+    const seasonMatch = text.match(/(spring|summer|fall|winter|early|late|mid)\s+\d{4}/i);
+    
     if (monthMatch) opening = monthMatch[0];
-    else if (text.includes('now open')) opening = 'OPEN NOW';
-    else if (text.includes('coming soon')) opening = 'Soon';
+    else if (seasonMatch) opening = seasonMatch[0];
+    else if (text.includes('now open') || text.includes('just opened')) opening = 'OPEN NOW';
+    else if (text.includes('coming soon') || text.includes('opening soon')) opening = 'Soon';
+    else if (text.includes('2025')) opening = '2025';
+    else if (text.includes('2026')) opening = '2026';
     
-    // Signage opportunities
+    // Signage opportunities based on business type
     const signage = [];
-    if (text.includes('restaurant') || text.includes('fast food') || text.includes('drive')) {
-        signage.push('Exterior Channel Letters', 'Drive-Thru Menu Boards', 'Monument Sign');
-    }
-    if (text.includes('retail') || text.includes('store') || text.includes('shopping')) {
-        signage.push('Storefront Signage', 'Window Graphics', 'Wayfinding Signs');
-    }
-    if (text.includes('coffee') || text.includes('cafe')) {
-        signage.push('Outdoor A-Frame', 'Menu Boards', 'Branded Displays');
-    }
-    if (signage.length === 0) {
-        signage.push('Custom Exterior Signage', 'Interior Branding', 'Directional Signs');
+    if (/restaurant|food|dining|eatery|grill|kitchen/i.test(text)) {
+        signage.push('Exterior Channel Letters', 'Interior Menu Boards', 'Window Graphics');
+    } else if (/fast food|drive.?thru|quick service/i.test(text)) {
+        signage.push('Drive-Thru Menu Boards', 'Pylon Sign', 'Digital Display Boards');
+    } else if (/coffee|cafe|espresso/i.test(text)) {
+        signage.push('Storefront Signage', 'Outdoor A-Frame', 'Menu Boards');
+    } else if (/retail|store|shop|boutique/i.test(text)) {
+        signage.push('Storefront Signage', 'Window Displays', 'Wayfinding Signs');
+    } else if (/shopping center|mall|plaza/i.test(text)) {
+        signage.push('Monument Sign', 'Directional Signage', 'Tenant Signs');
+    } else if (/hotel|resort|lodging/i.test(text)) {
+        signage.push('Exterior Signage', 'Wayfinding System', 'Room Signage');
+    } else if (/gym|fitness|health club/i.test(text)) {
+        signage.push('Channel Letters', 'Window Graphics', 'Interior Branding');
+    } else {
+        signage.push('Custom Exterior Signage', 'Building Identification', 'Wayfinding Signs');
     }
     
-    // Revenue estimate
+    // Revenue estimate based on business type and keywords
     let revenue = '$5,000-$15,000';
-    if (text.includes('chick-fil-a') || text.includes('costco') || text.includes('shopping center')) {
+    if (/chick.?fil.?a|costco|walmart|target|whole foods/i.test(text)) {
+        revenue = '$40,000-$100,000';
+    } else if (/shopping center|mall|plaza|development/i.test(text)) {
         revenue = '$25,000-$75,000';
-    } else if (text.includes('starbucks') || text.includes('chipotle') || text.includes('franchise')) {
+    } else if (/starbucks|chipotle|panera|five guys|shake shack/i.test(text)) {
         revenue = '$15,000-$35,000';
+    } else if (/franchise|chain/i.test(text)) {
+        revenue = '$12,000-$30,000';
     }
     
     return {
@@ -315,10 +377,12 @@ async function scrapeState(state) {
         return true;
     });
     
-    // Enrich into leads
-    const leads = unique.map(r => enrichLead(r, state, 'bing'));
+    // Enrich into leads and filter out nulls
+    const leads = unique
+        .map(r => enrichLead(r, state, 'bing'))
+        .filter(lead => lead !== null); // Remove filtered-out results
     
-    logger.success(`${state}: ${leads.length} unique leads`);
+    logger.success(`${state}: ${leads.length} unique leads (from ${unique.length} results)`);
     return leads;
 }
 
