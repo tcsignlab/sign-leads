@@ -244,13 +244,7 @@ function parseResults(engine, html) {
     return results;
 }
 
-async function searchWeb(query, engineIndex = 0, retries = 0) {
-    const engine = CONFIG.SEARCH_ENGINES[engineIndex];
-    if (!engine) {
-        logger.error('No more search engines to fallback to');
-        return [];
-    }
-
+async function searchWithEngine(query, engine, retries = 0) {
     try {
         logger.info(`  Searching with ${engine}: ${query}`);
         const results = [];
@@ -267,7 +261,7 @@ async function searchWeb(query, engineIndex = 0, retries = 0) {
                 url = `https://search.yahoo.com/search?p=${encodeURIComponent(query)}&n=${count}&b=${offset}`;
             } else if (engine === 'brave' && process.env.BRAVE_API_KEY) {
                 url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${count}&offset=${page - 1}`;
-                // Add header for API key in httpGet options if needed
+                // For Brave, add API key to headers in options (modify httpGet if needed)
             } else {
                 throw new Error(`Unsupported or misconfigured engine: ${engine}`);
             }
@@ -290,10 +284,7 @@ async function searchWeb(query, engineIndex = 0, retries = 0) {
         logger.warning(`  ${engine} failed: ${err.message}`);
         if (retries < CONFIG.RATE_LIMIT.maxRetries) {
             await delay(3000);
-            return searchWeb(query, engineIndex, retries + 1);
-        } else if (engineIndex < CONFIG.SEARCH_ENGINES.length - 1) {
-            logger.info(`  Falling back to next engine`);
-            return searchWeb(query, engineIndex + 1, 0);
+            return searchWithEngine(query, engine, retries + 1);
         }
         return [];
     }
@@ -492,9 +483,13 @@ async function scrapeState(state) {
         `intitle:"press release" "new store" OR "ribbon cutting" OR "opening soon" "2025" OR "2026" OR "future" OR "recent" OR "current" ${state}`
     ];
     for (const query of phase1Queries) {
-        const results = await searchWeb(query);
-        allResults.push(...results);
-        await delay(Math.random() * 1000 + 1000);
+        let queryResults = [];
+        for (const engine of CONFIG.SEARCH_ENGINES) {
+            const engineResults = await searchWithEngine(query, engine);
+            queryResults.push(...engineResults);
+            await delay(Math.random() * 1000 + 1000); // Delay between engines
+        }
+        allResults.push(...queryResults);
     }
     
     // PHASE 2: RFPs & Tenders
@@ -505,9 +500,13 @@ async function scrapeState(state) {
         `intitle:"RFP" "facility maintenance" OR "construction management" OR "remodel" "signage" filetype:pdf "2025" OR "2026" OR "current" ${state}`
     ];
     for (const query of phase2Queries) {
-        const results = await searchWeb(query);
-        allResults.push(...results);
-        await delay(Math.random() * 1000 + 1000);
+        let queryResults = [];
+        for (const engine of CONFIG.SEARCH_ENGINES) {
+            const engineResults = await searchWithEngine(query, engine);
+            queryResults.push(...engineResults);
+            await delay(Math.random() * 1000 + 1000);
+        }
+        allResults.push(...queryResults);
     }
     
     // PHASE 3: Local Newspapers & Chambers
@@ -521,9 +520,13 @@ async function scrapeState(state) {
         phase3Queries.push(`"new business opening" "Port Saint Lucie" OR "Treasure Coast" site:tcpalm.com "2025" OR "2026" OR "now"`);
     }
     for (const query of phase3Queries) {
-        const results = await searchWeb(query);
-        allResults.push(...results);
-        await delay(Math.random() * 1000 + 1000);
+        let queryResults = [];
+        for (const engine of CONFIG.SEARCH_ENGINES) {
+            const engineResults = await searchWithEngine(query, engine);
+            queryResults.push(...engineResults);
+            await delay(Math.random() * 1000 + 1000);
+        }
+        allResults.push(...queryResults);
     }
     
     // PHASE 4: Franchises & Commercial
@@ -534,9 +537,13 @@ async function scrapeState(state) {
     ];
     for (const franchise of topFranchises) {
         const query = `${franchise} opening OR expansion OR remodel "2025" OR "2026" OR "2027" OR "now" OR "recent" ${state}`;
-        const results = await searchWeb(query);
-        allResults.push(...results);
-        await delay(Math.random() * 1000 + 1000);
+        let queryResults = [];
+        for (const engine of CONFIG.SEARCH_ENGINES) {
+            const engineResults = await searchWithEngine(query, engine);
+            queryResults.push(...engineResults);
+            await delay(Math.random() * 1000 + 1000);
+        }
+        allResults.push(...queryResults);
     }
     const commercialQueries = [
         `strip mall leasing OR construction OR renovation "2025" OR "2026" OR "now" ${state}`,
@@ -544,9 +551,13 @@ async function scrapeState(state) {
         `commercial retail leasing OR new plaza OR expansion "2025" OR "2026" OR "now" ${state}`
     ];
     for (const query of commercialQueries) {
-        const results = await searchWeb(query);
-        allResults.push(...results);
-        await delay(Math.random() * 1000 + 1000);
+        let queryResults = [];
+        for (const engine of CONFIG.SEARCH_ENGINES) {
+            const engineResults = await searchWithEngine(query, engine);
+            queryResults.push(...engineResults);
+            await delay(Math.random() * 1000 + 1000);
+        }
+        allResults.push(...queryResults);
     }
     
     // PHASE 5: General Openings (broadened)
@@ -556,9 +567,13 @@ async function scrapeState(state) {
         `new store OR franchise OR business "expansion 2025" OR "opening soon 2026" OR "recent remodel" OR "new project" ${state}`
     ];
     for (const query of phase5Queries) {
-        const results = await searchWeb(query);
-        allResults.push(...results);
-        await delay(Math.random() * 1000 + 1000);
+        let queryResults = [];
+        for (const engine of CONFIG.SEARCH_ENGINES) {
+            const engineResults = await searchWithEngine(query, engine);
+            queryResults.push(...engineResults);
+            await delay(Math.random() * 1000 + 1000);
+        }
+        allResults.push(...queryResults);
     }
     
     // Deduplicate by URL
