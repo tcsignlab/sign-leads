@@ -1,4 +1,4 @@
-name: FREE Sign Lead Scraper
+name: Sign Lead Scraper
 
 on:
   schedule:
@@ -12,65 +12,48 @@ jobs:
   scrape-leads:
     runs-on: ubuntu-latest
     timeout-minutes: 180
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-      
+
       - name: Install dependencies
         run: npm install
-      
-      - name: Debug - Check configuration
-        run: |
-          echo "Checking configuration..."
-          if [ -z "${{ secrets.GOOGLE_API_KEYS }}" ] && [ -z "${{ secrets.GOOGLE_API_KEY }}" ]; then
-            echo "❌ ERROR: No Google API keys configured!"
-            exit 1
-          fi
-          if [ -z "${{ secrets.GOOGLE_SEARCH_ENGINE_IDS }}" ] && [ -z "${{ secrets.GOOGLE_SEARCH_ENGINE_ID }}" ]; then
-            echo "❌ ERROR: No Google Search Engine IDs configured!"
-            exit 1
-          fi
-          echo "✅ Configuration looks good"
-      
+
       - name: Run scraper
         env:
-          GOOGLE_API_KEYS: ${{ secrets.GOOGLE_API_KEYS }}
-          GOOGLE_SEARCH_ENGINE_IDS: ${{ secrets.GOOGLE_SEARCH_ENGINE_IDS }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GOOGLE_SEARCH_ENGINE_ID: ${{ secrets.GOOGLE_SEARCH_ENGINE_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPO: ${{ github.repository }}
           OUTPUT_DIR: ./state-pages
         run: |
-          echo "Starting scraper..."
+          echo "Starting DuckDuckGo scraper — no API keys required"
           node scraper-backend.js
           echo "Scraper completed"
-      
+
       - name: Check generated files
         run: |
           echo "Checking for generated files..."
           if [ -d "state-pages" ]; then
             echo "✅ state-pages directory exists"
-            echo "Files generated: $(ls -1 state-pages/*.html 2>/dev/null | wc -l) HTML files"
+            echo "HTML files generated: $(ls -1 state-pages/*.html 2>/dev/null | wc -l)"
             ls -lh state-pages/ | head -20
           else
             echo "❌ No state-pages directory found"
           fi
-      
+
       - name: Configure Git
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-      
+
       - name: Commit changes
         id: commit
         run: |
@@ -78,7 +61,6 @@ jobs:
           if [ -f next-run.json ]; then
             git add next-run.json
           fi
-          
           if git diff --staged --quiet; then
             echo "No changes to commit"
             echo "changes=false" >> $GITHUB_OUTPUT
@@ -86,14 +68,13 @@ jobs:
             git commit -m "🤖 Auto-update: $(date +'%Y-%m-%d %H:%M UTC')"
             echo "changes=true" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Push changes
         if: steps.commit.outputs.changes == 'true'
-        run: |
-          git push
+        run: git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Upload artifacts
         if: success()
         uses: actions/upload-artifact@v4
@@ -101,26 +82,26 @@ jobs:
           name: state-pages-${{ github.run_number }}
           path: state-pages/
           retention-days: 30
-      
+
       - name: Summary
         if: always()
         run: |
           echo "## 📊 Scraper Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
           if [ -f state-pages/scrape-summary.json ]; then
             echo "✅ **Status:** Success" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "- **Total Leads:** $(jq -r '.totalLeads' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
             echo "- **States Processed:** $(jq -r '.statesProcessed' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
-            echo "- **Duration:** $(jq -r '.durationSeconds' state-pages/scrape-summary.json) seconds" >> $GITHUB_STEP_SUMMARY
+            echo "- **Duration:** $(jq -r '.durationMinutes' state-pages/scrape-summary.json) minutes" >> $GITHUB_STEP_SUMMARY
             echo "- **Next Run:** $(jq -r '.nextRun' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Search Engine:** $(jq -r '.searchEngine' state-pages/scrape-summary.json)" >> $GITHUB_STEP_SUMMARY
             echo "- **Cost:** \$0.00 (100% Free)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### 🏆 Top 10 States" >> $GITHUB_STEP_SUMMARY
             jq -r '.stateBreakdown | sort_by(-.leadCount) | .[:10] | .[] | "- **\(.state):** \(.leadCount) leads"' state-pages/scrape-summary.json >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **Status:** Failed - No summary file generated" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Status:** Failed — no summary file generated" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Check the logs above for error details" >> $GITHUB_STEP_SUMMARY
           fi
