@@ -275,15 +275,15 @@ function enrichLead(result, state, queryType) {
     ];
     const isPrioritySource = priorityDomains.some(d => url.includes(d));
     
-    // New: Require future indicator
-    const hasFuture = /2026|2027|2028|future|upcoming|planned|will open|set to open|coming soon/i.test(text);
-    if (!hasFuture && !isPrioritySource) return null; // Skip old unless priority
+    // Relaxed: Future/Now indicator (optional for priority sources)
+    const hasTimeline = /202[5-9]|future|upcoming|planned|will open|set to open|coming soon|now open|recently opened|just opened|grand opening/i.test(text);
+    if (!hasTimeline && !isPrioritySource) return null; // Skip if no timeline unless priority
     
     // RELAXED FILTERS - Let more through, especially from priority sources
     
     // 1. Should have opening/business indicators (relaxed)
     const hasBusinessContext = 
-        /opening|opens|opened|open|new|construction|permit|building|location|store|restaurant|retail|franchise|expansion|development|grand|debut|launch|leasing|tenant|plaza|strip\s+mall|shopping\s+center/i.test(text);
+        /opening|opens|opened|open|new|construction|permit|building|location|store|restaurant|retail|franchise|expansion|development|grand|debut|launch|leasing|tenant|plaza|strip\s+mall|shopping\s+center|signage|sign\s+installation|digital\s+signs|wayfinding/i.test(text);
     
     if (!hasBusinessContext) {
         return null;
@@ -297,13 +297,13 @@ function enrichLead(result, state, queryType) {
         return null;
     }
     
-    // 3. For NON-priority sources, require business type mention
+    // 3. For NON-priority sources, require business type mention (relaxed to include signage terms)
     if (!isPrioritySource) {
         const hasBusinessType = 
-            /restaurant|cafe|coffee|food|retail|store|shop|boutique|salon|gym|fitness|hotel|bank|clinic|medical|pharmacy|gas station|convenience|grocery|mall|plaza|franchise|chain|strip\s+mall|strip\s+center|shopping\s+center|retail\s+center|commercial\s+development|mixed.?use/i.test(text);
+            /restaurant|cafe|coffee|food|retail|store|shop|boutique|salon|gym|fitness|hotel|bank|clinic|medical|pharmacy|gas station|convenience|grocery|mall|plaza|franchise|chain|strip\s+mall|strip\s+center|shopping\s+center|retail\s+center|commercial\s+development|mixed.?use|signage|sign\s+vendor|sign\s+installation/i.test(text);
         
         if (!hasBusinessType) {
-            return null; // Non-priority source needs clear business type
+            return null; // Non-priority source needs clear business type or signage
         }
     }
     
@@ -370,8 +370,7 @@ function enrichLead(result, state, queryType) {
     const monthMatch = text.match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2}(st|nd|rd|th)?,?\s+)?\d{4}/i);
     const seasonMatch = text.match(/(spring|summer|fall|winter|early|late|mid)\s+\d{4}/i);
     const quarterMatch = text.match(/q[1-4]\s+\d{4}/i);
-    const yearMatch = text.match(/(202[5-7])/);
-    const futureYearMatch = text.match(/(202[6-9])/);
+    const yearMatch = text.match(/(202[5-9])/);
     
     if (monthMatch) {
         opening = monthMatch[0];
@@ -383,8 +382,6 @@ function enrichLead(result, state, queryType) {
         opening = 'OPEN NOW';
     } else if (/opening soon|coming soon|will open|plans to open|set to open/i.test(text)) {
         opening = 'Soon';
-    } else if (futureYearMatch) {
-        opening = futureYearMatch[1];
     } else if (yearMatch) {
         opening = yearMatch[1];
     }
@@ -459,9 +456,9 @@ async function scrapeState(state) {
     // PHASE 1: Press Releases & Announcements
     logger.info(`  Phase 1: Press Releases & Announcements...`);
     const phase1Queries = [
-        `"new business opening" OR "grand opening" OR "store opening" OR "franchise expansion" site:prnewswire.com OR site:businesswire.com "2026" OR "2027" ${state}`,
-        `"business expansion" OR "new location" OR "development agreement" "signage" OR "sign installation" site:globenewswire.com "2026" ${state}`,
-        `intitle:"press release" "new store" OR "ribbon cutting" OR "opening soon" "2026" OR "future" ${state}`
+        `"new business opening" OR "grand opening" OR "store opening" OR "franchise expansion" site:prnewswire.com OR site:businesswire.com "2026" OR "2027" OR "now" ${state}`,
+        `"business expansion" OR "new location" OR "development agreement" "signage" OR "sign installation" site:globenewswire.com "2026" OR "now" ${state}`,
+        `intitle:"press release" "new store" OR "ribbon cutting" OR "opening soon" "2026" OR "future" OR "recent" ${state}`
     ];
     for (const query of phase1Queries) {
         const results = await searchBing(query);
@@ -472,9 +469,9 @@ async function scrapeState(state) {
     // PHASE 2: RFPs & Tenders
     logger.info(`  Phase 2: RFPs & Tenders...`);
     const phase2Queries = [
-        `"request for proposal" OR "RFP" OR "tender" "signage" OR "digital signs" OR "outdoor signs" filetype:pdf "2026" OR "2027" ${state}`,
+        `"request for proposal" OR "RFP" OR "tender" "signage" OR "digital signs" OR "outdoor signs" filetype:pdf "2026" OR "2027" OR "now" ${state}`,
         `"bid opportunity" OR "solicitation" "signage vendor" OR "sign maintenance" site:gov OR site:org filetype:pdf ${state}`,
-        `intitle:"RFP" "facility maintenance" OR "construction management" "signage" filetype:pdf "2026" ${state}`
+        `intitle:"RFP" "facility maintenance" OR "construction management" "signage" filetype:pdf "2026" OR "current" ${state}`
     ];
     for (const query of phase2Queries) {
         const results = await searchBing(query);
@@ -485,12 +482,12 @@ async function scrapeState(state) {
     // PHASE 3: Local Newspapers & Chambers
     logger.info(`  Phase 3: Local Newspapers & Chambers...`);
     const phase3Queries = [
-        `"new business announcement" OR "store opening" OR "grand opening" site:miamiherald.com OR site:orlandosentinel.com OR site:tcpalm.com "2026" OR "future" ${state}`,
-        `"business ribbon cutting" OR "new shop opening" OR "expansion announcement" site:usatoday.com OR site:local.newspaper.com "2026" ${state}`,
-        `"chamber of commerce" "new members" OR "business announcements" OR "opening events" site:chamberofcommerce.com OR site:localchamber.org "2026" ${state}`
+        `"new business announcement" OR "store opening" OR "grand opening" site:miamiherald.com OR site:orlandosentinel.com OR site:tcpalm.com "2026" OR "future" OR "now" ${state}`,
+        `"business ribbon cutting" OR "new shop opening" OR "expansion announcement" site:usatoday.com OR site:local.newspaper.com "2026" OR "recent" ${state}`,
+        `"chamber of commerce" "new members" OR "business announcements" OR "opening events" site:chamberofcommerce.com OR site:localchamber.org "2026" OR "now" ${state}`
     ];
     if (state === 'Florida') {
-        phase3Queries.push(`"new business opening" "Port Saint Lucie" OR "Treasure Coast" site:tcpalm.com "2026"`);
+        phase3Queries.push(`"new business opening" "Port Saint Lucie" OR "Treasure Coast" site:tcpalm.com "2026" OR "now"`);
     }
     for (const query of phase3Queries) {
         const results = await searchBing(query);
@@ -505,15 +502,15 @@ async function scrapeState(state) {
         'Chipotle', 'Five Guys', 'Wingstop', 'Crumbl Cookies'
     ];
     for (const franchise of topFranchises) {
-        const query = `${franchise} opening OR expansion "2026" OR "2027" ${state}`;
+        const query = `${franchise} opening OR expansion "2026" OR "2027" OR "now" ${state}`;
         const results = await searchBing(query);
         allResults.push(...results);
         await delay(Math.random() * 1000 + 1000);
     }
     const commercialQueries = [
-        `strip mall leasing OR construction "2026" ${state}`,
-        `shopping center development OR tenants "future" ${state}`,
-        `commercial retail leasing OR new plaza "2026" ${state}`
+        `strip mall leasing OR construction "2026" OR "now" ${state}`,
+        `shopping center development OR tenants "future" OR "current" ${state}`,
+        `commercial retail leasing OR new plaza "2026" OR "now" ${state}`
     ];
     for (const query of commercialQueries) {
         const results = await searchBing(query);
@@ -524,8 +521,8 @@ async function scrapeState(state) {
     // PHASE 5: General Future Openings
     logger.info(`  Phase 5: General Future Openings...`);
     const phase5Queries = [
-        `restaurant OR retail opening "2026" OR "2027" OR "coming 2026" ${state}`,
-        `new store OR franchise "expansion 2026" OR "opening soon 2026" ${state}`
+        `restaurant OR retail opening "2026" OR "2027" OR "coming 2026" OR "now open" ${state}`,
+        `new store OR franchise "expansion 2026" OR "opening soon 2026" OR "recent opening" ${state}`
     ];
     for (const query of phase5Queries) {
         const results = await searchBing(query);
