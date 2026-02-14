@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-02-13T23:18:18.403Z",
+  "timestamp": "2026-02-14T00:36:01.554Z",
   "totalLeads": 0,
   "statesProcessed": 1,
-  "durationSeconds": "3.12",
-  "nextRun": "2026-02-17T23:18:18.403Z",
+  "durationSeconds": "9.12",
+  "nextRun": "2026-02-18T00:36:01.554Z",
   "apiKeyStats": {
-    "totalCalls": 10,
+    "totalCalls": 20,
     "exhaustedKeys": 10,
     "activeKeys": 0
   },
@@ -20,134 +20,189 @@
   ],
   "logs": [
     {
-      "timestamp": "2026-02-13T23:18:15.281Z",
+      "timestamp": "2026-02-14T00:35:52.430Z",
       "level": "info",
       "message": "\n🚀 STARTING 50-STATE SIGN LEAD SCRAPE"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.285Z",
+      "timestamp": "2026-02-14T00:35:52.434Z",
       "level": "info",
-      "message": "Time: 2026-02-13T23:18:15.285Z"
+      "message": "Time: 2026-02-14T00:35:52.434Z"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.285Z",
+      "timestamp": "2026-02-14T00:35:52.434Z",
       "level": "info",
       "message": "API Keys loaded: 10"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.285Z",
+      "timestamp": "2026-02-14T00:35:52.434Z",
       "level": "info",
       "message": "Search Engine IDs loaded: 10"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.286Z",
+      "timestamp": "2026-02-14T00:35:52.436Z",
       "level": "info",
       "message": "\n========== SCRAPING ALABAMA =========="
     },
     {
-      "timestamp": "2026-02-13T23:18:15.287Z",
+      "timestamp": "2026-02-14T00:35:52.436Z",
       "level": "info",
       "message": "Phase 1: Keyword searches"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.418Z",
+      "timestamp": "2026-02-14T00:35:52.577Z",
+      "level": "error",
+      "message": "API error \"new store opening\" in Alabama: [403] This project does not have the access to Custom Search JSON API."
+    },
+    {
+      "timestamp": "2026-02-14T00:35:53.178Z",
+      "level": "error",
+      "message": "API error \"restaurant opening\" in Alabama: [403] This project does not have the access to Custom Search JSON API."
+    },
+    {
+      "timestamp": "2026-02-14T00:35:53.733Z",
+      "level": "error",
+      "message": "API error \"grand opening retail\" in Alabama: [403] This project does not have the access to Custom Search JSON API."
+    },
+    {
+      "timestamp": "2026-02-14T00:35:54.341Z",
+      "level": "error",
+      "message": "API error \"commercial development construction\" in Alabama: [403] This project does not have the access to Custom Search JSON API."
+    },
+    {
+      "timestamp": "2026-02-14T00:35:54.947Z",
+      "level": "error",
+      "message": "API error \"new franchise location\" in Alabama: [403] This project does not have the access to Custom Search JSON API."
+    },
+    {
+      "timestamp": "2026-02-14T00:35:55.546Z",
+      "level": "error",
+      "message": "API error \"strip mall development\" in Alabama: [403] This project does not have the access to Custom Search JSON API."
+    },
+    {
+      "timestamp": "2026-02-14T00:35:56.099Z",
+      "level": "error",
+      "message": "API error \"shopping center construction\" in Alabama: [403] This project does not have the access to Custom Search JSON API."
+    },
+    {
+      "timestamp": "2026-02-14T00:35:56.652Z",
+      "level": "error",
+      "message": "API error \"retail building permit\" in Alabama: [403] This project does not have the access to Custom Search JSON API."
+    },
+    {
+      "timestamp": "2026-02-14T00:35:57.153Z",
+      "level": "info",
+      "message": "Phase 2: Franchise searches"
+    },
+    {
+      "timestamp": "2026-02-14T00:35:57.205Z",
+      "level": "error",
+      "message": "API error \"Chick-fil-A new location\" in Alabama: [403] This project does not have the access to Custom Search JSON API."
+    },
+    {
+      "timestamp": "2026-02-14T00:35:57.812Z",
+      "level": "error",
+      "message": "API error \"Dutch Bros new location\" in Alabama: [403] This project does not have the access to Custom Search JSON API."
+    },
+    {
+      "timestamp": "2026-02-14T00:35:58.364Z",
       "level": "warning",
       "message": "Key AIzaSyBfM3gX... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.459Z",
+      "timestamp": "2026-02-14T00:35:58.463Z",
       "level": "warning",
       "message": "Key AIzaSyDccPPC... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.502Z",
+      "timestamp": "2026-02-14T00:35:58.558Z",
       "level": "warning",
       "message": "Key AIzaSyBqf18P... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.564Z",
+      "timestamp": "2026-02-14T00:35:58.607Z",
       "level": "warning",
       "message": "Key AIzaSyCBjnFQ... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.611Z",
+      "timestamp": "2026-02-14T00:35:58.704Z",
       "level": "warning",
       "message": "Key AIzaSyCwIy17... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.659Z",
+      "timestamp": "2026-02-14T00:35:58.756Z",
       "level": "warning",
       "message": "Key AIzaSyBnkBL4... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.707Z",
+      "timestamp": "2026-02-14T00:35:58.808Z",
       "level": "warning",
       "message": "Key AIzaSyCtrdBD... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.802Z",
+      "timestamp": "2026-02-14T00:35:58.903Z",
       "level": "warning",
       "message": "Key AIzaSyDcWPtB... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.863Z",
+      "timestamp": "2026-02-14T00:35:58.956Z",
       "level": "warning",
       "message": "Key AIzaSyACHVBA... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.898Z",
+      "timestamp": "2026-02-14T00:35:59.051Z",
       "level": "warning",
       "message": "Key AIzaSyBLK-Y8... quota exhausted"
     },
     {
-      "timestamp": "2026-02-13T23:18:15.899Z",
+      "timestamp": "2026-02-14T00:35:59.051Z",
       "level": "error",
       "message": "ALL API KEYS EXHAUSTED for today"
     },
     {
-      "timestamp": "2026-02-13T23:18:16.400Z",
+      "timestamp": "2026-02-14T00:35:59.552Z",
       "level": "info",
       "message": "0 unique results for Alabama"
     },
     {
-      "timestamp": "2026-02-13T23:18:16.400Z",
+      "timestamp": "2026-02-14T00:35:59.552Z",
       "level": "success",
       "message": "0 leads extracted for Alabama"
     },
     {
-      "timestamp": "2026-02-13T23:18:16.400Z",
+      "timestamp": "2026-02-14T00:35:59.552Z",
       "level": "warning",
       "message": "Alabama: 0 leads - below minimum, no page generated"
     },
     {
-      "timestamp": "2026-02-13T23:18:18.403Z",
+      "timestamp": "2026-02-14T00:36:01.554Z",
       "level": "warning",
       "message": "All API keys exhausted - stopping early"
     },
     {
-      "timestamp": "2026-02-13T23:18:18.403Z",
+      "timestamp": "2026-02-14T00:36:01.554Z",
       "level": "success",
       "message": "\n✅ SCRAPE COMPLETE"
     },
     {
-      "timestamp": "2026-02-13T23:18:18.403Z",
+      "timestamp": "2026-02-14T00:36:01.554Z",
       "level": "info",
       "message": "Total leads: 0"
     },
     {
-      "timestamp": "2026-02-13T23:18:18.403Z",
+      "timestamp": "2026-02-14T00:36:01.554Z",
       "level": "info",
       "message": "States with pages: 0"
     },
     {
-      "timestamp": "2026-02-13T23:18:18.403Z",
+      "timestamp": "2026-02-14T00:36:01.554Z",
       "level": "info",
-      "message": "Duration: 3.12s"
+      "message": "Duration: 9.12s"
     },
     {
-      "timestamp": "2026-02-13T23:18:18.403Z",
+      "timestamp": "2026-02-14T00:36:01.554Z",
       "level": "info",
-      "message": "API calls: 10 | Keys exhausted: 10/10"
+      "message": "API calls: 20 | Keys exhausted: 10/10"
     }
   ]
 }
