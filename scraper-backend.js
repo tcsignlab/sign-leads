@@ -84,6 +84,9 @@ const CONFIG = {
         'Costco new location',
     ],
 
+    // Search engine config - list in order of preference for fallbacks
+    SEARCH_ENGINES: ['bing', 'ddg', 'yahoo'], // 'brave' requires API key; add if available via env BRAVE_API_KEY
+
     RATE_LIMIT: {
         minDelay:   1500,
         maxDelay:   3000,
@@ -167,7 +170,7 @@ function httpGet(url) {
     });
 }
 
-// ==================== BING SEARCH + PARSER ====================
+// ==================== SEARCH + PARSER ====================
 function decodeEntities(text) {
     return text
         .replace(/&amp;/g, '&')
@@ -178,11 +181,9 @@ function decodeEntities(text) {
         .replace(/&nbsp;/g, ' ');
 }
 
-function parseBingResults(html) {
+// Engine-specific parsers
+function parseResults(engine, html) {
     const results = [];
-    const blocks  = html.split('<li class="b_algo"');
-
-    // Blacklist of domains to exclude
     const blacklist = [
         'dictionary.com', 'merriam-webster.com', 'wikipedia.org', 'wiktionary.org',
         'urbandictionary.com', 'thesaurus.com', 'definitions.net', 'yourdictionary.com',
@@ -191,73 +192,109 @@ function parseBingResults(html) {
         'yelp.com/search', 'tripadvisor.com', 'booking.com', 'expedia.com', 'archive.org', 'oldnews.com'
     ];
 
+    let blocks;
+    if (engine === 'bing') {
+        blocks = html.split('<li class="b_algo"');
+    } else if (engine === 'ddg') {
+        blocks = html.split('<div class="result results_links');
+    } else if (engine === 'yahoo') {
+        blocks = html.split('<div class="dd algo');
+    } else {
+        return []; // Unsupported
+    }
+
     for (const block of blocks.slice(1)) {
         try {
-            const linkMatch = block.match(/<h2[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>(.*?)<\/a>/s);
+            let linkMatch, titleMatch, snippetMatch;
+            if (engine === 'bing') {
+                linkMatch = block.match(/<h2[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>(.*?)<\/a>/s);
+                snippetMatch = block.match(/<p[^>]*>(.*?)<\/p>/s);
+            } else if (engine === 'ddg') {
+                linkMatch = block.match(/<a class="result__a" href="([^"]+)"[^>]*>(.*?)<\/a>/s);
+                snippetMatch = block.match(/<a class="result__snippet"[^>]*>(.*?)<\/a>/s);
+            } else if (engine === 'yahoo') {
+                linkMatch = block.match(/<h3[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>(.*?)<\/a>/s);
+                snippetMatch = block.match(/<p class="lh-16"[^>]*>(.*?)<\/p>/s);
+            }
+
             if (!linkMatch) continue;
 
-            let url   = linkMatch[1];
+            let url = linkMatch[1];
             let title = linkMatch[2].replace(/<[^>]+>/g, '').trim();
-            title     = decodeEntities(title);
+            title = decodeEntities(title);
 
-            // Skip blacklisted domains
             const urlLower = url.toLowerCase();
-            if (blacklist.some(domain => urlLower.includes(domain))) {
-                continue;
-            }
+            if (blacklist.some(domain => urlLower.includes(domain))) continue;
 
-            // Skip if title looks like a definition
-            if (/definition|meaning|what does|what is|define|synonym/i.test(title)) {
-                continue;
-            }
+            if (/definition|meaning|what does|what is|define|synonym/i.test(title)) continue;
 
-            // Extract snippet
-            const snippetMatch = block.match(/<p[^>]*>(.*?)<\/p>/s);
             let snippet = '';
             if (snippetMatch) {
                 snippet = snippetMatch[1].replace(/<[^>]+>/g, '').trim();
                 snippet = decodeEntities(snippet);
             }
 
-            // Must have both title and snippet
             if (!snippet || snippet.length < 20) continue;
 
             results.push({ title, url, snippet });
-        } catch(e) {
-            // Skip malformed results
+        } catch (e) {
+            // Skip
         }
     }
     return results;
 }
 
-async function searchBing(query, retries = 0) {
+async function searchWeb(query, engineIndex = 0, retries = 0) {
+    const engine = CONFIG.SEARCH_ENGINES[engineIndex];
+    if (!engine) {
+        logger.error('No more search engines to fallback to');
+        return [];
+    }
+
     try {
+        logger.info(`  Searching with ${engine}: ${query}`);
         const results = [];
         let page = 1;
-        const count = 50; // Max ~50 per page
-        while (page <= 3) { // Up to 3 pages (~150 results)
-            const offset = (page - 1) * count + 1;
-            const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=${count}&first=${offset}`;
-            logger.info(`  Bing: ${query} (Page ${page})`);
+        const count = 50;
+        while (page <= 3) {
+            let url;
+            let offset = (page - 1) * count + 1;
+            if (engine === 'bing') {
+                url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=${count}&first=${offset}`;
+            } else if (engine === 'ddg') {
+                url = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}&s=${offset - 1}&dc=${offset}`;
+            } else if (engine === 'yahoo') {
+                url = `https://search.yahoo.com/search?p=${encodeURIComponent(query)}&n=${count}&b=${offset}`;
+            } else if (engine === 'brave' && process.env.BRAVE_API_KEY) {
+                url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${count}&offset=${page - 1}`;
+                // Add header for API key in httpGet options if needed
+            } else {
+                throw new Error(`Unsupported or misconfigured engine: ${engine}`);
+            }
+
+            logger.info(`  ${engine} Page ${page}`);
             const res = await httpGet(url);
             if (res.status === 200) {
-                const pageResults = parseBingResults(res.body);
-                if (pageResults.length < 10) break; // Stop if few results
+                const pageResults = parseResults(engine, res.body);
+                if (pageResults.length < 10) break;
                 results.push(...pageResults);
             } else {
-                break;
+                throw new Error(`HTTP ${res.status}`);
             }
-            await delay(1500 + Math.random() * 1000); // Gentle delay
+            await delay(1500 + Math.random() * 1000);
             page++;
         }
-        logger.info(`  Found: ${results.length} results`);
+        logger.info(`  Found: ${results.length} results from ${engine}`);
         return results;
-    } catch(err) {
+    } catch (err) {
+        logger.warning(`  ${engine} failed: ${err.message}`);
         if (retries < CONFIG.RATE_LIMIT.maxRetries) {
             await delay(3000);
-            return searchBing(query, retries + 1);
+            return searchWeb(query, engineIndex, retries + 1);
+        } else if (engineIndex < CONFIG.SEARCH_ENGINES.length - 1) {
+            logger.info(`  Falling back to next engine`);
+            return searchWeb(query, engineIndex + 1, 0);
         }
-        logger.error(`  Search error: ${err.message}`);
         return [];
     }
 }
@@ -455,7 +492,7 @@ async function scrapeState(state) {
         `intitle:"press release" "new store" OR "ribbon cutting" OR "opening soon" "2025" OR "2026" OR "future" OR "recent" OR "current" ${state}`
     ];
     for (const query of phase1Queries) {
-        const results = await searchBing(query);
+        const results = await searchWeb(query);
         allResults.push(...results);
         await delay(Math.random() * 1000 + 1000);
     }
@@ -468,7 +505,7 @@ async function scrapeState(state) {
         `intitle:"RFP" "facility maintenance" OR "construction management" OR "remodel" "signage" filetype:pdf "2025" OR "2026" OR "current" ${state}`
     ];
     for (const query of phase2Queries) {
-        const results = await searchBing(query);
+        const results = await searchWeb(query);
         allResults.push(...results);
         await delay(Math.random() * 1000 + 1000);
     }
@@ -484,7 +521,7 @@ async function scrapeState(state) {
         phase3Queries.push(`"new business opening" "Port Saint Lucie" OR "Treasure Coast" site:tcpalm.com "2025" OR "2026" OR "now"`);
     }
     for (const query of phase3Queries) {
-        const results = await searchBing(query);
+        const results = await searchWeb(query);
         allResults.push(...results);
         await delay(Math.random() * 1000 + 1000);
     }
@@ -497,7 +534,7 @@ async function scrapeState(state) {
     ];
     for (const franchise of topFranchises) {
         const query = `${franchise} opening OR expansion OR remodel "2025" OR "2026" OR "2027" OR "now" OR "recent" ${state}`;
-        const results = await searchBing(query);
+        const results = await searchWeb(query);
         allResults.push(...results);
         await delay(Math.random() * 1000 + 1000);
     }
@@ -507,7 +544,7 @@ async function scrapeState(state) {
         `commercial retail leasing OR new plaza OR expansion "2025" OR "2026" OR "now" ${state}`
     ];
     for (const query of commercialQueries) {
-        const results = await searchBing(query);
+        const results = await searchWeb(query);
         allResults.push(...results);
         await delay(Math.random() * 1000 + 1000);
     }
@@ -519,7 +556,7 @@ async function scrapeState(state) {
         `new store OR franchise OR business "expansion 2025" OR "opening soon 2026" OR "recent remodel" OR "new project" ${state}`
     ];
     for (const query of phase5Queries) {
-        const results = await searchBing(query);
+        const results = await searchWeb(query);
         allResults.push(...results);
         await delay(Math.random() * 1000 + 1000);
     }
@@ -534,7 +571,7 @@ async function scrapeState(state) {
     
     // Enrich into leads and filter out nulls
     const leads = unique
-        .map(r => enrichLead(r, state, 'bing'))
+        .map(r => enrichLead(r, state, 'web'))
         .filter(lead => lead !== null);
     
     logger.success(`${state}: ${leads.length} qualified leads (from ${unique.length} results)`);
@@ -602,7 +639,7 @@ function generateHTML(state, leads) {
     </div>
     <div class="leads-grid" id="leadsContainer"></div>
     <footer>
-        <p>${state} Sign Lead Database | ${leads.length} opportunities | Sourced via Bing Search</p>
+        <p>${state} Sign Lead Database | ${leads.length} opportunities | Sourced via Web Search</p>
         <p style="margin-top:8px">Updated: ${ts} | Auto-refreshes every 96 hours</p>
     </footer>
 </div>
@@ -639,18 +676,17 @@ function generateHTML(state, leads) {
 
 // ==================== MAIN ====================
 async function runFullScrape() {
-    logger.info('\n🚀 SIGN LEAD SCRAPER v4 — Bing Edition');
+    logger.info('\n🚀 SIGN LEAD SCRAPER v4 — Hybrid Search Edition');
     logger.info(`Time:          ${new Date().toISOString()}`);
     logger.info(`States:        ${CONFIG.US_STATES.length}`);
-    logger.info(`Queries/state: ${CONFIG.KEYWORDS.length + CONFIG.FRANCHISE_CHAINS.length}`);
-    logger.info('Engine:        Bing (free, no API key, cloud-IP friendly)');
+    logger.info(`Engines:       ${CONFIG.SEARCH_ENGINES.join(', ')}`);
 
     await fs.mkdir(CONFIG.OUTPUT.directory, { recursive: true });
 
     const start   = Date.now();
     const results = {};
     let total     = 0;
-    const statesToScrape = process.env.STATE ? [process.env.STATE] : CONFIG.US_STATES; // e.g., STATE=Florida
+    const statesToScrape = process.env.STATE ? [process.env.STATE] : CONFIG.US_STATES;
 
     for (const state of statesToScrape) {
         try {
@@ -658,7 +694,6 @@ async function runFullScrape() {
             results[state] = leads;
             total += leads.length;
 
-            // Always write the HTML file - overwrite existing
             const html     = generateHTML(state, leads);
             const filePath = path.join(CONFIG.OUTPUT.directory, `${state.toLowerCase().replace(/ /g,'-')}-sign-leads.html`);
             await fs.writeFile(filePath, html);
@@ -678,7 +713,7 @@ async function runFullScrape() {
         timestamp: new Date().toISOString(), totalLeads: total,
         statesProcessed: Object.keys(results).length, durationMinutes: mins,
         nextRun: new Date(Date.now() + 96*60*60*1000).toISOString(),
-        searchEngine: 'Bing (free, no API key)',
+        searchEngines: CONFIG.SEARCH_ENGINES,
         stateBreakdown: Object.entries(results).map(([s,l]) => ({
             state: s, stateCode: CONFIG.STATE_CODES[s],
             leadCount: l.length
