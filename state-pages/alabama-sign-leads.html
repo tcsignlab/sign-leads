@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALABAMA SIGN LEADS — 18 Active Opportunities</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#0f3460,#16213e);padding:10px;min-height:100vh}
+        .container{max-width:2000px;margin:0 auto;background:white;border-radius:15px;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+        header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:white;padding:30px;text-align:center;border-radius:15px 15px 0 0}
+        header h1{font-size:2.5em;color:#00d4ff;margin-bottom:8px;text-shadow:0 0 20px rgba(0,212,255,.5)}
+        header p{color:#94a3b8;font-size:.9em}
+        .back-link{display:inline-block;margin-top:12px;color:#00d4ff;font-size:.8em;text-decoration:none;opacity:.8}
+        .back-link:hover{opacity:1}
+        .stats-bar{background:linear-gradient(135deg,#00d4ff,#0099ff);color:white;padding:20px;display:flex;justify-content:space-around;flex-wrap:wrap;gap:20px}
+        .stat-item{text-align:center}
+        .stat-number{font-size:2.5em;font-weight:bold;display:block}
+        .filters{background:#f8fafc;padding:20px;display:flex;gap:15px;align-items:center;flex-wrap:wrap;border-bottom:3px solid #00d4ff}
+        .filters select,.filters input{padding:10px 15px;border:2px solid #e2e8f0;border-radius:8px;font-size:.95em}
+        .search-bar{flex:1;min-width:250px}
+        .leads-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:25px;padding:30px;background:#f8fafc;min-height:200px}
+        .lead-card{background:white;border:2px solid #e2e8f0;border-left:6px solid #e2e8f0;border-radius:12px;padding:25px;transition:all .3s}
+        .lead-card:hover{transform:translateY(-8px);box-shadow:0 15px 35px rgba(0,212,255,.2);border-color:#00d4ff}
+        .lead-card.hot{border-left-color:#ef4444}
+        .lead-card.warm{border-left-color:#f59e0b}
+        .badge{display:inline-block;padding:6px 14px;border-radius:20px;font-size:.75em;font-weight:800;text-transform:uppercase;margin-bottom:12px}
+        .badge-hot{background:#ef4444;color:white}
+        .badge-warm{background:#f59e0b;color:white}
+        .lead-title{font-size:1.2em;font-weight:900;color:#1a1a2e;margin-bottom:10px;line-height:1.3}
+        .lead-detail{margin:7px 0;color:#475569;font-size:.9em}
+        .signage-box{background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-left:4px solid #00d4ff;padding:12px 15px;margin:15px 0;border-radius:8px}
+        .signage-box h4{color:#0099ff;margin-bottom:6px;font-size:.85em;text-transform:uppercase}
+        .signage-box li{color:#334155;font-size:.9em;padding:2px 0;list-style:none}
+        .signage-box li::before{content:"✦ ";color:#00d4ff}
+        .revenue-box{background:#d1fae5;padding:12px;border-radius:8px;text-align:center;margin:15px 0;font-weight:bold;color:#047857}
+        .contact-btn{width:100%;padding:14px;background:linear-gradient(135deg,#00d4ff,#0099ff);color:white;border:none;border-radius:10px;font-weight:800;cursor:pointer;text-decoration:none;display:block;text-align:center;transition:all .3s}
+        .contact-btn:hover{background:linear-gradient(135deg,#0099ff,#0066cc);transform:translateY(-2px)}
+        .no-leads{text-align:center;padding:60px;color:#94a3b8;font-size:1.1em;grid-column:1/-1}
+        footer{background:#1a1a2e;color:#94a3b8;text-align:center;padding:20px;border-radius:0 0 15px 15px;font-size:.85em}
+        @media(max-width:768px){.leads-grid{grid-template-columns:1fr}header h1{font-size:1.8em}}
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🎯 ALABAMA SIGN LEADS</h1>
+        <p>Sign Industry Opportunities | Updated: February 14, 2026</p>
+        <a class="back-link" href="../index.html">← Back to National Map</a>
+    </header>
+    <div class="stats-bar">
+        <div class="stat-item"><span class="stat-number">18</span><span>Total Leads</span></div>
+        <div class="stat-item"><span class="stat-number">4</span><span>🔥 Hot</span></div>
+        <div class="stat-item"><span class="stat-number">14</span><span>⚡ Warm</span></div>
+        <div class="stat-item"><span class="stat-number">AL</span><span>State</span></div>
+    </div>
+    <div class="filters">
+        <input type="text" class="search-bar" id="searchBox" placeholder="Search by name or location..." oninput="filterLeads()">
+        <select id="tempFilter" onchange="filterLeads()">
+            <option value="all">All Temperatures</option>
+            <option value="hot">🔥 Hot Only</option>
+            <option value="warm">⚡ Warm Only</option>
+        </select>
+    </div>
+    <div class="leads-grid" id="leadsContainer"></div>
+    <footer>
+        <p>Alabama Sign Lead Database | 18 opportunities | Sourced via DuckDuckGo</p>
+        <p style="margin-top:8px">Updated: February 14, 2026 | Auto-refreshes every 96 hours</p>
+    </footer>
+</div>
+<script>
+    const allLeads=[{"state":"Alabama","stateCode":"AL","name":"New Alabama restaurants","subtitle":"What's cooking? Alabama's 2026 restaurant openings as national chains and local favorites expand, from Cooper's Hawk Win","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"2026","temp":"warm","signage":["Monument sign","Channel letters","Menu boards","Drive-thru signage"],"revenue":"$45K – $90K","source":"https://www.dispatch.com/story/news/2026/01/28/new-alabama-restaurants-opening-in-2026-heres-what-to-know-chick-fil-a-longhorn-raising-canes/88397395007/","discovered":"2026-02-14T05:57:02.212Z"},{"state":"Alabama","stateCode":"AL","name":"Unique restaurant chain","subtitle":"A taste of the islands is coming to Alabama . Hawaiian Bros Island Grill is opening 34 new restaurants covering North Al","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"warm","signage":["Monument sign","Channel letters","Menu boards","Drive-thru signage","Pylon sign","Lot banners"],"revenue":"$30K – $65K","source":"https://www.al.com/news/2025/12/unique-restaurant-chain-opening-first-2-alabama-locations.html","discovered":"2026-02-14T05:57:02.213Z"},{"state":"Alabama","stateCode":"AL","name":"5 new businesses + 2 closures in Birmingham this week","subtitle":"A popular farm-to-table restaurant based in downtown Birmingham is opening a new location in the Birmingham area. Known ","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"warm","signage":["Monument sign","Channel letters","Menu boards","Drive-thru signage"],"revenue":"$30K – $65K","source":"https://bhamnow.com/2026/02/09/5-new-businesses-2-closures-in-birmingham-this-week/","discovered":"2026-02-14T05:57:02.213Z"},{"state":"Alabama","stateCode":"AL","name":"New and Coming Soon Restaurants in Huntsville and Madison","subtitle":"Discover new and upcoming restaurants in Huntsville and Madison County, Alabama , and explore delicious local food from ","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"hot","signage":["Monument sign","Channel letters","Menu boards","Drive-thru signage"],"revenue":"$30K – $65K","source":"https://www.huntsville.org/blog/list/post/new-and-coming-soon-restaurants-in-huntsville-and-madison/","discovered":"2026-02-14T05:57:02.213Z"},{"state":"Alabama","stateCode":"AL","name":"New restaurant","subtitle":"MADISON, Ala. (WHNT) — A new restaurant is opening it's first Alabama location in Town Madison. Town Madison officials a","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"warm","signage":["Monument sign","Channel letters","Menu boards","Drive-thru signage"],"revenue":"$30K – $65K","source":"https://whnt.com/news/madison/new-restaurant-opening-first-alabama-location-in-town-madison/","discovered":"2026-02-14T05:57:02.213Z"},{"state":"Alabama","stateCode":"AL","name":"12 New Alabama Restaurants","subtitle":"These 12 new Alabama restaurants span experimental to eclectic, from a cocktail to fresh oysters or a medley of flavors,","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"warm","signage":["Monument sign","Channel letters","Menu boards","Drive-thru signage"],"revenue":"$30K – $65K","source":"https://thelocalpalate.com/articles/new-alabama-restaurants/","discovered":"2026-02-14T05:57:02.213Z"},{"state":"Alabama","stateCode":"AL","name":"6 New Restaurants in Birmingham, AL","subtitle":"If your New Year's resolution includes trying new things, Birmingham's food scene makes it easy with a fresh wave of res","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"warm","signage":["Monument sign","Channel letters","Menu boards","Drive-thru signage"],"revenue":"$30K – $65K","source":"https://styleblueprint.com/everyday/new-restaurants-in-birmingham/","discovered":"2026-02-14T05:57:02.213Z"},{"state":"Alabama","stateCode":"AL","name":"New Restaurants Huntsville","subtitle":"There's one thing you can count on in Huntsville, new restaurants opening up, elevating the Huntsville food scene!","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"warm","signage":["Monument sign","Channel letters","Menu boards","Drive-thru signage"],"revenue":"$30K – $65K","source":"https://huntsvillemagazine.com/category/new-restaurants-huntsville/","discovered":"2026-02-14T05:57:02.213Z"},{"state":"Alabama","stateCode":"AL","name":"Coming Soon to Huntsville and Madison","subtitle":"There are so many new things coming soon to Huntsville and Madison in the next few years - stay in-the-know with this li","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"hot","signage":["Monument sign","Channel letters"],"revenue":"$12K – $30K","source":"https://wearehuntsville.com/coming-soon-to-huntsville-and-madison/","discovered":"2026-02-14T05:57:02.213Z"},{"state":"Alabama","stateCode":"AL","name":"We're getting closer to IKEA","subtitle":"The Huntsville IKEA is moving closer to becoming a reality. The furniture chain with the cult following is opening its f","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"warm","signage":["Monument sign","Channel letters","Interior wayfinding","Window graphics"],"revenue":"$12K – $30K","source":"https://www.al.com/news/2026/02/were-getting-closer-to-ikea-opening-its-first-alabama-store.html","discovered":"2026-02-14T05:57:02.214Z"},{"state":"Alabama","stateCode":"AL","name":"Are more Aldi stores","subtitle":"Aldi plans to open more than 180 new grocery stores across the United States this year, with Alabama among the 31 states","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"warm","signage":["Monument sign","Channel letters","Interior wayfinding","Window graphics"],"revenue":"$12K – $30K","source":"https://www.montgomeryadvertiser.com/story/news/2026/01/15/are-more-aldi-stores-coming-to-alabama-where-are-current-locations/88183320007/","discovered":"2026-02-14T05:57:02.214Z"},{"state":"Alabama","stateCode":"AL","name":"Walmart","subtitle":"The retail giant says five new Walmart stores and one Sam's Club will open by the end of September 2025, part of a broad","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"September 2025","temp":"warm","signage":["Monument sign","Channel letters","Interior wayfinding","Window graphics"],"revenue":"$20K – $45K","source":"https://www.msn.com/en-us/money/companies/walmart-to-open-five-new-stores-by-fall-one-alabama-location-on-the-list-what-we-know/ar-AA1FJftu","discovered":"2026-02-14T05:57:02.214Z"},{"state":"Alabama","stateCode":"AL","name":"ALDI Grand","subtitle":"Stay up to date on our ALDI Grand Openings . See if an ALDI grocery store is coming to a neighborhood near you!","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"hot","signage":["Monument sign","Channel letters","Interior wayfinding","Window graphics"],"revenue":"$12K – $30K","source":"https://www.aldi.us/grand-openings","discovered":"2026-02-14T05:57:02.214Z"},{"state":"Alabama","stateCode":"AL","name":"Popular supermarket","subtitle":"A POPULAR supermarket chain is set to open an additional 35 stores across nine states before the end of the year. Aldi i","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"2025","temp":"warm","signage":["Monument sign","Channel letters","Interior wayfinding","Window graphics"],"revenue":"$12K – $30K","source":"https://www.the-sun.com/money/15206553/new-aldi-store-tuscaloosa-alabama-september/","discovered":"2026-02-14T05:57:02.214Z"},{"state":"Alabama","stateCode":"AL","name":"ALDI","subtitle":"ALDI is moving quickly with its plans to open 225 store locations this year. The plans are part of a rapid five-year exp","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"warm","signage":["Monument sign","Channel letters","Interior wayfinding","Window graphics"],"revenue":"$12K – $30K","source":"https://www.al.com/news/2025/09/aldi-opening-37-new-stores-including-3-in-alabama-heres-the-complete-list.html","discovered":"2026-02-14T05:57:02.214Z"},{"state":"Alabama","stateCode":"AL","name":"ALDI","subtitle":"ALDI is opening a new location in Alabama as part of the company's ongoing growth strategy. As part of a $9 billion, fiv","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"2025","temp":"warm","signage":["Monument sign","Channel letters","Interior wayfinding","Window graphics"],"revenue":"$12K – $30K","source":"https://www.msn.com/en-us/money/companies/aldi-announces-new-alabama-location-for-2025-heres-where-the-store-will-expand-in-al/ar-AA1DCQg6","discovered":"2026-02-14T05:57:02.214Z"},{"state":"Alabama","stateCode":"AL","name":"Where is Aldi","subtitle":"Aldi will soon host grand openings of 17 new locations in nine states, including Alabama . Is your city on the list?","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"hot","signage":["Monument sign","Channel letters","Interior wayfinding","Window graphics"],"revenue":"$12K – $30K","source":"https://www.yahoo.com/news/where-aldi-opening-locations-grocery-155020568.html","discovered":"2026-02-14T05:57:02.214Z"},{"state":"Alabama","stateCode":"AL","name":"Opening Day at Polymarket's Chaotic Stunt Grocery Store","subtitle":"The betting platform Polymarket opened a 'free grocery store.' A line of New Yorkers who didn't care much for gambling w","location":"Alabama","contact":"Development Team","phone":"Contact for details","opening":"Coming soon","temp":"warm","signage":["Monument sign","Channel letters","Interior wayfinding","Window graphics","Pylon sign","Lot banners"],"revenue":"$12K – $30K","source":"https://www.curbed.com/article/polymarket-free-grocery-pop-up-west-village-opening-day.html","discovered":"2026-02-14T05:57:02.214Z"}];
+    function displayLeads(leads){
+        const c=document.getElementById('leadsContainer');
+        if(!leads.length){c.innerHTML='<div class="no-leads">No leads match your filters.</div>';return}
+        c.innerHTML=leads.map(l=>`
+            <div class="lead-card ${l.temp}">
+                <span class="badge badge-${l.temp}">${l.temp==='hot'?'🔥 HOT LEAD':'⚡ WARM LEAD'}</span>
+                <div class="lead-title">${l.name}</div>
+                <div class="lead-detail">📍 ${l.location}</div>
+                <div class="lead-detail">📞 ${l.phone}</div>
+                <div class="lead-detail">📅 Opening: ${l.opening}</div>
+                <div class="signage-box">
+                    <h4>Signage Opportunities</h4>
+                    <ul>${(l.signage||[]).map(s=>`<li>${s}</li>`).join('')}</ul>
+                </div>
+                <div class="revenue-box">💰 Est. Revenue: ${l.revenue}</div>
+                <a class="contact-btn" href="${l.source}" target="_blank" rel="noopener">🔗 VIEW LEAD SOURCE</a>
+            </div>`).join('');
+    }
+    function filterLeads(){
+        const temp=document.getElementById('tempFilter').value;
+        const search=document.getElementById('searchBox').value.toLowerCase();
+        displayLeads(allLeads.filter(l=>
+            (temp==='all'||l.temp===temp)&&
+            (search===''||l.name.toLowerCase().includes(search)||l.location.toLowerCase().includes(search))
+        ));
+    }
+    window.onload=()=>displayLeads(allLeads);
+</script>
+</body>
+</html>
