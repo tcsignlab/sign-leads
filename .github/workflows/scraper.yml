@@ -168,3 +168,15 @@ jobs:
           git status
           git remote -v
           exit 1
+      
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ Scraper failed! Check logs.'
+            })
